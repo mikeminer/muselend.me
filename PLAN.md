@@ -36,6 +36,8 @@ explicit owner gates.
   fail-closed until verified deployment addresses are supplied.
 - [x] Add wallet connectivity, transaction lifecycle, direct-chain fallback, APIs,
   reorg-aware finalized-block indexing, rate limiting, and security headers.
+- [x] Wire typed Base Sepolia test-adapter quotes to simulated full and capped position
+  settlement, including explicit slippage and borrower-controlled top-up limits.
 - [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
   fail-closed behavior.
 - [ ] Connect production persistence and observability after the owner provisions the

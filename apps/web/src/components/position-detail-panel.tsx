@@ -7,6 +7,7 @@ import { contracts, deploymentConfigured } from "@/lib/contracts";
 import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
 import { TransactionStatus } from "@/components/transaction-status";
 import { PositionHistory } from "@/components/position-history";
+import { PositionSettlement } from "@/components/position-settlement";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
       <p className="text-sm text-muted-foreground">Full and capped buyback actions require a fresh verified swap quote and remain unavailable until the quote adapter is configured.</p>
       <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Position transaction" />
     </CardContent></Card>
+    {(state === "Open" || state === "Settlement pending") && ownsPosition ? <PositionSettlement id={id} creatorToken={position[1]} adapter={position[2]} syntheticAmount={position[3]} coverageCap={position[7]} debt={debt} allowance={allowance} enabled={enabled && !busy} /> : null}
     <PositionHistory id={id} enabled={enabled} />
   </div>;
 }

@@ -52,3 +52,9 @@ Set `NEXT_PUBLIC_DEPLOYMENT_BLOCK` from the generated manifest and create a uniq
 the authenticated `/api/indexer/sync` scheduler. The indexer deliberately trails the chain
 by five confirmations and verifies stored block hashes, so a provider inconsistency or
 short reorg is replayed rather than silently incorporated into product state.
+
+Set `NEXT_PUBLIC_SWAP_ADAPTER_ADDRESS` only to the adapter address contained in the verified
+manifest. On Base Sepolia the buy quote endpoints recognize the deterministic test adapter:
+they verify its bytecode, PositionManager allowlist status, CreatorTokenValidator result and
+on-chain test price before returning a typed route. They never return calldata. This mechanism
+is testnet-only and must not be presented as Uniswap market execution or reused for mainnet.
