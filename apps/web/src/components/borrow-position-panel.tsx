@@ -2,8 +2,8 @@
 
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { isAddress, parseUnits } from "viem";
-import { useAccount } from "wagmi";
+import { formatUnits, isAddress, parseAbi, parseUnits } from "viem";
+import { useAccount, useReadContracts } from "wagmi";
 import { deploymentConfigured } from "@/lib/contracts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,14 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 
 type Props = { disclosures: string[]; acknowledgements: string[] };
+const erc20MetadataAbi = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+]);
 
 export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
-  const { isConnected, chainId } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
   const [token, setToken] = useState("");
   const [amount, setAmount] = useState("");
   const [advanceRate, setAdvanceRate] = useState(60);
@@ -25,9 +30,22 @@ export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
   const [accepted, setAccepted] = useState<boolean[]>(() => acknowledgements.map(() => false));
   const [status, setStatus] = useState<string>();
   const [loading, setLoading] = useState(false);
-  const amountAtomic = useMemo(() => safeTokenAmount(amount), [amount]);
+  const tokenAddress = isAddress(token) ? token : undefined;
+  const tokenReads = useReadContracts({
+    contracts: tokenAddress && address ? [
+      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "balanceOf", args: [address] },
+      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "decimals" },
+      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "symbol" },
+    ] : [],
+    query: { enabled: Boolean(tokenAddress && address && chainId === 84532) },
+  });
+  const tokenBalance = tokenReads.data?.[0]?.status === "success" ? tokenReads.data[0].result : 0n;
+  const tokenDecimals = tokenReads.data?.[1]?.status === "success" ? tokenReads.data[1].result : 18;
+  const tokenSymbol = tokenReads.data?.[2]?.status === "success" ? tokenReads.data[2].result : "tokens";
+  const amountAtomic = useMemo(() => safeTokenAmount(amount, tokenDecimals), [amount, tokenDecimals]);
   const ready = deploymentConfigured && isConnected && chainId === 84532;
-  const formValid = isAddress(token) && amountAtomic > 0n && accepted.every(Boolean);
+  const balanceSufficient = !isConnected || amountAtomic <= tokenBalance;
+  const formValid = Boolean(tokenAddress) && amountAtomic > 0n && balanceSufficient && accepted.every(Boolean);
 
   async function requestQuote() {
     if (!formValid) return;
@@ -77,6 +95,8 @@ export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
           <div className="space-y-2">
             <Label htmlFor="amount">Amount to sell</Label>
             <Input id="amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" />
+            {isConnected && tokenAddress ? <p className="text-xs text-muted-foreground">Wallet balance: {Number(formatUnits(tokenBalance, tokenDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} {tokenSymbol}</p> : null}
+            {!balanceSufficient ? <p className="text-xs text-destructive">Amount exceeds the connected wallet balance.</p> : null}
           </div>
           <div className="space-y-3">
             <div className="flex justify-between text-sm"><Label>Loan amount</Label><span className="font-mono text-muted-foreground">{advanceRate}%</span></div>
@@ -105,6 +125,6 @@ export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
   );
 }
 
-function safeTokenAmount(value: string) {
-  try { return value && /^\d+(\.\d{0,18})?$/.test(value) ? parseUnits(value, 18) : 0n; } catch { return 0n; }
+function safeTokenAmount(value: string, decimals: number) {
+  try { return value && /^\d+(\.\d{0,18})?$/.test(value) ? parseUnits(value, decimals) : 0n; } catch { return 0n; }
 }
