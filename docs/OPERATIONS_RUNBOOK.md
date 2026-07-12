@@ -33,6 +33,16 @@ plan and cost are approved.
 5. Follow `INCIDENT_RESPONSE.md`; adapter additions require the configured delay.
 6. Resume only after root cause, invariant replay, review and public status update.
 
+## Timelock proposal procedure
+
+1. Connect only the configured proposer wallet or Safe interface on Base Sepolia.
+2. Compare current caps, token risk tier, adapter status and timelock roles shown by direct reads.
+3. Select a typed action and use a unique human-auditable proposal label; never paste arbitrary calldata.
+4. Require `Direct simulation: passed`, the expected target, and the expected operation ID.
+5. Schedule the operation and record its BaseScan transaction. Scheduling does not execute it.
+6. After the minimum delay, independently review calldata and operation ID before permissionless execution.
+7. For emergency pause, use the separate guardian path; unpause remains timelocked.
+
 ## Website maintenance mode
 
 Set `MAINTENANCE_MODE=true` only as an environment-scoped deployment change. Product pages
