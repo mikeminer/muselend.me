@@ -1,1 +1,10 @@
-import { ContentPage } from "@/components/content-page"; export default function Cookies(){return <ContentPage eyebrow="Legal" title="Cookie notice" intro="MuseLend intends to use only essential storage by default. Analytics and optional cookies remain disabled until consent and legal review are implemented." sections={[{title:"Essential storage",body:"Security nonces, wallet-session state, locale and consent choices may require essential cookies or local storage."},{title:"Optional analytics",body:"No non-essential analytics should load before the required consent mechanism is active."}]}/>}
+import { useTranslations } from "next-intl";
+import { ContentPage } from "@/components/content-page";
+
+export default function Cookies() {
+  const t = useTranslations("PublicPages");
+  return <ContentPage eyebrow={t("legal")} title={t("cookiesTitle")} intro={t("cookiesIntro")} sections={[
+    { title: t("cookiesEssential"), body: t("cookiesEssentialBody") },
+    { title: t("cookiesAnalytics"), body: t("cookiesAnalyticsBody") },
+  ]} />;
+}

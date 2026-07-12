@@ -70,6 +70,20 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText(/dati e transazioni della posizione restano disabilitati/i)).toBeVisible();
 });
 
+test("Italian locale covers public documentation and legal gates", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Italiano/i }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "it");
+  await page.goto("/docs");
+  await expect(page.getByRole("heading", { level: 1, name: "Come MuseLend contabilizza il rischio" })).toBeVisible();
+  await page.goto("/risk");
+  await expect(page.getByRole("heading", { level: 1, name: "Il rischio è esplicito, non eliminato" })).toBeVisible();
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { level: 1, name: "Termini di utilizzo" })).toBeVisible();
+  await page.goto("/status");
+  await expect(page.getByRole("heading", { level: 1, name: "Preparazione testnet" })).toBeVisible();
+});
+
 for (const route of [
   "/",
   "/app",

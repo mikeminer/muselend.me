@@ -1,1 +1,11 @@
-import { ContentPage } from "@/components/content-page"; export default function Terms(){return <ContentPage eyebrow="Legal" title="Terms of use" intro="Draft product copy for testnet evaluation only. Final terms require independent legal approval before any mainnet activation." sections={[{title:"Testnet only",body:"The current product is intended for Base Sepolia testing. Tokens and balances displayed may have no economic value."},{title:"No guarantee",body:"Nothing in this interface promises yield, redemption, capital protection, availability or fitness for a particular purpose."},{title:"User responsibility",body:"Users remain responsible for wallet security, transaction review, applicable law and understanding every disclosed risk."}]}/>}
+import { useTranslations } from "next-intl";
+import { ContentPage } from "@/components/content-page";
+
+export default function Terms() {
+  const t = useTranslations("PublicPages");
+  return <ContentPage eyebrow={t("legal")} title={t("termsTitle")} intro={t("termsIntro")} sections={[
+    { title: t("termsTestnet"), body: t("termsTestnetBody") },
+    { title: t("termsGuarantee"), body: t("termsGuaranteeBody") },
+    { title: t("termsResponsibility"), body: t("termsResponsibilityBody") },
+  ]} />;
+}

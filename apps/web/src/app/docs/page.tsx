@@ -1,2 +1,12 @@
+import { useTranslations } from "next-intl";
 import { ContentPage } from "@/components/content-page";
-export default function DocsPage(){return <ContentPage eyebrow="Protocol documentation" title="How MuseLend accounts for risk" intro="MuseLend separates realized sale reserves, senior debt and junior capped coverage. This interface documents the intended V1; deployed contracts remain the authoritative implementation." sections={[{title:"Opening",body:"Creator tokens are transferred and sold atomically through a typed adapter. Net USDC is measured from the actual balance delta and isolated by position before any senior loan is originated."},{title:"Interest",body:"Senior debt uses a high-precision borrow index and debt shares. The utilization curve has a kink and an on-chain maximum APR used for worst-case maturity checks."},{title:"Settlement",body:"A borrower may repay and buy back the full token amount within the coverage cap, add a bounded top-up, or accept an exact-input capped settlement returning the amount the market can provide."},{title:"Default",body:"After maturity and grace, anyone may settle. The sale reserve pays senior debt with priority; the synthetic right expires and unused junior coverage is released."}]}/>}
+
+export default function DocsPage() {
+  const t = useTranslations("PublicPages");
+  return <ContentPage eyebrow={t("docsEyebrow")} title={t("docsTitle")} intro={t("docsIntro")} sections={[
+    { title: t("docsOpening"), body: t("docsOpeningBody") },
+    { title: t("docsInterest"), body: t("docsInterestBody") },
+    { title: t("docsSettlement"), body: t("docsSettlementBody") },
+    { title: t("docsDefault"), body: t("docsDefaultBody") },
+  ]} />;
+}

@@ -1,2 +1,13 @@
+import { useTranslations } from "next-intl";
 import { ContentPage } from "@/components/content-page";
-export default function RiskPage(){return <ContentPage eyebrow="Risk disclosure" title="Risk is explicit, not eliminated" intro="MuseLend is experimental smart-contract infrastructure. Testnet operation is not evidence that mainnet use is safe or legally available." sections={[{title:"Creator-token liquidity",body:"Prices can move sharply and liquidity can disappear. Buybacks can fail, require top-up, or return fewer tokens under capped settlement."},{title:"Capped synthetic",body:"The position is time-limited and covered only up to K. It is not guaranteed redemption, protected capital or an uncapped 1:1 claim."},{title:"Senior and junior risk",body:"Senior lenders face smart-contract, USDC, Base, integration, liquidity and accounting risk. Junior underwriters can lose up to the capital allocated to an epoch."},{title:"Dependencies",body:"The protocol depends on Base, native USDC, Zora token validation and allowlisted swap venues. A failure or change in any dependency may pause openings or leave settlement pending."},{title:"Administration",body:"Emergency roles may pause new risk but cannot take protected reserves. Non-emergency parameter and adapter changes require a timelock in the intended deployment."}]}/>}
+
+export default function RiskPage() {
+  const t = useTranslations("PublicPages");
+  return <ContentPage eyebrow={t("riskEyebrow")} title={t("riskTitle")} intro={t("riskIntro")} sections={[
+    { title: t("riskLiquidity"), body: t("riskLiquidityBody") },
+    { title: t("riskSynthetic"), body: t("riskSyntheticBody") },
+    { title: t("riskTranches"), body: t("riskTranchesBody") },
+    { title: t("riskDependencies"), body: t("riskDependenciesBody") },
+    { title: t("riskAdmin"), body: t("riskAdminBody") },
+  ]} />;
+}

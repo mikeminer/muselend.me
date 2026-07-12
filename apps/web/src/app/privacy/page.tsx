@@ -1,1 +1,11 @@
-import { ContentPage } from "@/components/content-page"; export default function Privacy(){return <ContentPage eyebrow="Legal" title="Privacy notice" intro="Draft privacy information pending legal review. The product is designed to minimize personal data and use wallet-based access." sections={[{title:"Data categories",body:"Public wallet addresses, protocol events, risk acknowledgements, legal-acceptance versions, technical logs and optional notification settings may be processed."},{title:"Authoritative data",body:"Public blockchain activity cannot be deleted by MuseLend. Off-chain data is not authoritative for balances, debt or ownership."},{title:"Contact and rights",body:"A verified privacy contact and jurisdiction-specific rights process must be added before launch."}]}/>}
+import { useTranslations } from "next-intl";
+import { ContentPage } from "@/components/content-page";
+
+export default function Privacy() {
+  const t = useTranslations("PublicPages");
+  return <ContentPage eyebrow={t("legal")} title={t("privacyTitle")} intro={t("privacyIntro")} sections={[
+    { title: t("privacyCategories"), body: t("privacyCategoriesBody") },
+    { title: t("privacyAuthority"), body: t("privacyAuthorityBody") },
+    { title: t("privacyRights"), body: t("privacyRightsBody") },
+  ]} />;
+}
