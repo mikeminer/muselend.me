@@ -1,0 +1,5 @@
+{
+  "extends": "../abis/tsconfig.json",
+  "compilerOptions": { "outDir": "dist" },
+  "include": ["src"]
+}

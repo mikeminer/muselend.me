@@ -1,0 +1,5 @@
+{
+  "extends": "../abis/tsconfig.json",
+  "compilerOptions": { "jsx": "react-jsx", "outDir": "dist" },
+  "include": ["src"]
+}

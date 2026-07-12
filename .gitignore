@@ -1,0 +1,34 @@
+# dependencies and build output
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+dist/
+out/
+coverage/
+playwright-report/
+test-results/
+
+# environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Foundry output and local chains
+packages/contracts/cache/
+packages/contracts/out/
+packages/contracts/broadcast/
+packages/contracts/lib/
+
+# editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# logs
+*.log
+pnpm-debug.log*

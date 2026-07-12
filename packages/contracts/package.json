@@ -1,0 +1,11 @@
+{
+  "name": "@muselend/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "lint": "forge fmt --check",
+    "typecheck": "forge build",
+    "test": "forge test"
+  }
+}

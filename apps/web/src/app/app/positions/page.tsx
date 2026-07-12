@@ -1,0 +1,2 @@
+import { EmptyState } from "@/components/empty-state"; import { PageHeading } from "@/components/page-heading";
+export default function PositionsPage(){return <><PageHeading eyebrow="Positions" title="Capped synthetic positions" description="Inspect debt, maturity, reserve, junior coverage and currently available settlement routes."/><EmptyState title="No positions found" text="Positions are indexed from contract events with direct on-chain reads as the fallback source of truth."/></>}
