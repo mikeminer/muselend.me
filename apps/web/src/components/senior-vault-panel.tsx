@@ -2,6 +2,7 @@
 
 import { MuseLendUSDCVaultAbi } from "@muselend/abis";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { formatUnits, maxUint256, parseAbi, parseUnits } from "viem";
 import {
   useAccount,
@@ -28,6 +29,7 @@ const erc20Abi = parseAbi([
 ]);
 
 export function SeniorVaultPanel() {
+  const t = useTranslations("LendPanel");
   const { address, chainId, isConnected } = useAccount();
   const [amount, setAmount] = useState("");
   const [queueShares, setQueueShares] = useState("");
@@ -84,26 +86,26 @@ export function SeniorVaultPanel() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Wallet USDC" value={format(walletBalance)} detail="Native Base Sepolia USDC" />
-        <MetricCard label="Vault shares" value={format(shares)} detail="ERC-4626 balance" />
-        <MetricCard label="Available" value={format(cash)} detail="Immediately liquid" />
-        <MetricCard label="Outstanding debt" value={format(debt)} detail={`${format(totalAssets)} total assets`} />
+        <MetricCard label={t("walletUsdc")} value={format(walletBalance)} detail={t("walletUsdcDetail")} />
+        <MetricCard label={t("vaultShares")} value={format(shares)} detail={t("vaultSharesDetail")} />
+        <MetricCard label={t("available")} value={format(cash)} detail={t("availableDetail")} />
+        <MetricCard label={t("debt")} value={format(debt)} detail={t("debtDetail", { assets: format(totalAssets) })} />
       </div>
       {!deploymentConfigured ? (
         <Alert className="mt-6 border-amber-300/20 bg-amber-300/5">
-          <AlertTitle>Base Sepolia deployment not configured</AlertTitle>
-          <AlertDescription>No transaction is enabled until verified contract addresses are published.</AlertDescription>
+          <AlertTitle>{t("deploymentTitle")}</AlertTitle>
+          <AlertDescription>{t("deploymentText")}</AlertDescription>
         </Alert>
       ) : null}
       <Tabs defaultValue="deposit" className="mt-8">
         <TabsList>
-          <TabsTrigger value="deposit">Deposit</TabsTrigger>
-          <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
-          <TabsTrigger value="queue">Queue</TabsTrigger>
+          <TabsTrigger value="deposit">{t("depositTab")}</TabsTrigger>
+          <TabsTrigger value="withdraw">{t("withdrawTab")}</TabsTrigger>
+          <TabsTrigger value="queue">{t("queueTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="deposit">
-          <ActionCard title="Deposit USDC">
-            <Label htmlFor="lend-amount">Amount</Label>
+          <ActionCard title={t("depositTitle")}>
+            <Label htmlFor="lend-amount">{t("amount")}</Label>
             <Input
               id="lend-amount"
               inputMode="decimal"
@@ -114,45 +116,45 @@ export function SeniorVaultPanel() {
             />
             {parsedAmount && allowance < parsedAmount ? (
               <Button className="w-full" onClick={approve} disabled={actionDisabled || !approveSimulation.data?.request}>
-                {busy ? "Confirming…" : "Approve USDC"}
+                {busy ? t("approving") : t("approve")}
               </Button>
             ) : (
               <Button className="w-full" onClick={deposit} disabled={actionDisabled || !depositSimulation.data?.request}>
-                {busy ? "Confirming…" : "Deposit"}
+                {busy ? t("approving") : t("deposit")}
               </Button>
             )}
           </ActionCard>
         </TabsContent>
         <TabsContent value="withdraw">
-          <ActionCard title="Withdraw available liquidity">
-            <p className="text-sm text-muted-foreground">Immediately withdrawable: {format(maxWithdraw)}</p>
-            <Label htmlFor="withdraw-amount">Assets</Label>
+          <ActionCard title={t("withdrawTitle")}>
+            <p className="text-sm text-muted-foreground">{t("withdrawable", { amount: format(maxWithdraw) })}</p>
+            <Label htmlFor="withdraw-amount">{t("assets")}</Label>
             <Input id="withdraw-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={!enabled} />
             <Button className="w-full" onClick={withdraw} disabled={actionDisabled || !withdrawSimulation.data?.request}>
-              {busy ? "Confirming…" : "Withdraw"}
+              {busy ? t("approving") : t("withdraw")}
             </Button>
           </ActionCard>
         </TabsContent>
         <TabsContent value="queue">
-          <ActionCard title="Queue share redemption">
-            <p className="text-sm text-muted-foreground">Queueing transfers shares into FIFO escrow until cash returns.</p>
-            <Label htmlFor="queue-shares">Shares</Label>
+          <ActionCard title={t("queueTitle")}>
+            <p className="text-sm text-muted-foreground">{t("queueDescription")}</p>
+            <Label htmlFor="queue-shares">{t("shares")}</Label>
             <Input id="queue-shares" inputMode="decimal" value={queueShares} onChange={(event) => setQueueShares(event.target.value)} disabled={!enabled} />
             <Button className="w-full" onClick={queue} disabled={!enabled || busy || !queueSimulation.data?.request}>
-              {busy ? "Confirming…" : "Enter withdrawal queue"}
+              {busy ? t("approving") : t("enterQueue")}
             </Button>
             <div className="rounded-lg border p-3 text-sm text-muted-foreground">
-              <p>Next FIFO request: {typeof nextRequest.data === "bigint" ? `#${nextRequest.data}` : "—"}</p>
-              <p>Receiver: {queued ? `${queued[1].slice(0, 8)}…${queued[1].slice(-6)}` : "No pending request"}</p>
-              <p>Estimated assets: {typeof queuedAssets.data === "bigint" ? format(queuedAssets.data) : "—"}</p>
+              <p>{t("nextRequest", { request: typeof nextRequest.data === "bigint" ? `#${nextRequest.data}` : "—" })}</p>
+              <p>{t("receiver", { receiver: queued ? `${queued[1].slice(0, 8)}…${queued[1].slice(-6)}` : t("noRequest") })}</p>
+              <p>{t("estimatedAssets", { assets: typeof queuedAssets.data === "bigint" ? format(queuedAssets.data) : "—" })}</p>
             </div>
-            <Button className="w-full" variant="outline" onClick={claim} disabled={busy || !claimSimulation.data?.request}>Claim next FIFO request</Button>
+            <Button className="w-full" variant="outline" onClick={claim} disabled={busy || !claimSimulation.data?.request}>{t("claim")}</Button>
           </ActionCard>
         </TabsContent>
       </Tabs>
-      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Vault transaction" />
-      {!isConnected ? <p className="mt-4 text-sm text-muted-foreground">Connect a wallet to load balances and transact.</p> : null}
-      {isConnected && chainId !== 84532 ? <p className="mt-4 text-sm text-amber-200">Switch to Base Sepolia.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("transaction")} />
+      {!isConnected ? <p className="mt-4 text-sm text-muted-foreground">{t("connect")}</p> : null}
+      {isConnected && chainId !== 84532 ? <p className="mt-4 text-sm text-amber-200">{t("network")}</p> : null}
     </>
   );
 }

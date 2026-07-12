@@ -50,6 +50,10 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
   await page.goto("/app/lend");
   await expect(page.getByRole("heading", { level: 1, name: "Deposita USDC nativo" })).toBeVisible();
+  await expect(page.getByText("Deposita USDC", { exact: true })).toBeVisible();
+  await page.goto("/app/underwrite");
+  await expect(page.getByRole("heading", { level: 1, name: "Sottoscrivi un’epoca fissa" })).toBeVisible();
+  await expect(page.getByText("Posizione nell’epoca", { exact: true })).toBeVisible();
 });
 
 for (const route of [

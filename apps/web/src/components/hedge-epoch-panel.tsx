@@ -2,6 +2,7 @@
 
 import { MuseLendHedgeEpochVaultAbi } from "@muselend/abis";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { formatUnits, maxUint256, parseAbi, parseUnits } from "viem";
 import { useAccount, useBlock, useReadContracts, useSimulateContract, useWriteContract } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
@@ -20,6 +21,7 @@ const erc20Abi = parseAbi([
 ]);
 
 export function HedgeEpochPanel() {
+  const t = useTranslations("UnderwritePanel");
   const { address, chainId } = useAccount();
   const [epoch, setEpoch] = useState("1");
   const [amount, setAmount] = useState("");
@@ -70,49 +72,49 @@ export function HedgeEpochPanel() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="Epoch capital" value={format(deposited)} detail={`Epoch #${epoch || "—"}`} />
-        <MetricCard label="Locked coverage" value={format(locked)} detail={`${format(available)} available`} />
-        <MetricCard label="Premium realized" value={format(premium)} detail="Before protocol fees" />
-        <MetricCard label="Your epoch shares" value={format(shares)} detail={closed ? "Redeemable" : "Locked until close"} />
-        <MetricCard label="Realized PnL" value={format(realizedPnl)} detail="After settled position losses" />
-        <MetricCard label="Settlement deadline" value={settlementDeadline ? new Date(settlementDeadline * 1000).toLocaleDateString() : "—"} detail={`${openPositions} linked positions · max allocated loss ${format(locked)}`} />
+        <MetricCard label={t("capital")} value={format(deposited)} detail={t("epoch", { id: epoch || "—" })} />
+        <MetricCard label={t("locked")} value={format(locked)} detail={t("available", { amount: format(available) })} />
+        <MetricCard label={t("premium")} value={format(premium)} detail={t("premiumDetail")} />
+        <MetricCard label={t("shares")} value={format(shares)} detail={closed ? t("redeemable") : t("lockedDetail")} />
+        <MetricCard label={t("pnl")} value={format(realizedPnl)} detail={t("pnlDetail")} />
+        <MetricCard label={t("deadline")} value={settlementDeadline ? new Date(settlementDeadline * 1000).toLocaleDateString() : "—"} detail={t("deadlineDetail", { positions: openPositions.toString(), loss: format(locked) })} />
       </div>
       {!deploymentConfigured ? (
         <Alert className="mt-6 border-amber-300/20 bg-amber-300/5">
-          <AlertTitle>Base Sepolia deployment not configured</AlertTitle>
-          <AlertDescription>Epoch transactions activate only after verified addresses are published.</AlertDescription>
+          <AlertTitle>{t("deploymentTitle")}</AlertTitle>
+          <AlertDescription>{t("deploymentText")}</AlertDescription>
         </Alert>
       ) : null}
       <Card className="mt-8 max-w-xl">
-        <CardHeader><CardTitle>Epoch position</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("positionTitle")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="epoch-id">Epoch ID</Label>
+            <Label htmlFor="epoch-id">{t("epochId")}</Label>
             <Input id="epoch-id" inputMode="numeric" value={epoch} onChange={(event) => setEpoch(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="epoch-assets">USDC to allocate</Label>
+            <Label htmlFor="epoch-assets">{t("allocate")}</Label>
             <Input id="epoch-assets" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={!enabled} />
           </div>
           {assets > allowance ? (
             <Button className="w-full" onClick={approve} disabled={busy || !approveSimulation.data?.request}>
-              {busy ? "Confirming…" : "Approve USDC"}
+              {busy ? t("confirming") : t("approve")}
             </Button>
           ) : (
             <Button className="w-full" onClick={deposit} disabled={busy || !depositSimulation.data?.request}>
-              {busy ? "Confirming…" : "Deposit into epoch"}
+              {busy ? t("confirming") : t("deposit")}
             </Button>
           )}
-          <Button variant="outline" className="w-full" onClick={close} disabled={busy || !closeSimulation.data?.request}>Close settled epoch</Button>
+          <Button variant="outline" className="w-full" onClick={close} disabled={busy || !closeSimulation.data?.request}>{t("close")}</Button>
           <Button variant="outline" className="w-full" onClick={redeem} disabled={busy || !redeemSimulation.data?.request}>
-            {busy ? "Confirming…" : "Redeem all epoch shares"}
+            {busy ? t("confirming") : t("redeem")}
           </Button>
           <p className="text-xs leading-5 text-muted-foreground">
-            Junior capital can lose value and cannot exit while linked positions remain open.
+            {t("risk")}
           </p>
         </CardContent>
       </Card>
-      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Epoch transaction" />
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("transaction")} />
     </>
   );
 }
