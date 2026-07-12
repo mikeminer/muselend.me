@@ -58,3 +58,5 @@ manifest. On Base Sepolia the buy quote endpoints recognize the deterministic te
 they verify its bytecode, PositionManager allowlist status, CreatorTokenValidator result and
 on-chain test price before returning a typed route. They never return calldata. This mechanism
 is testnet-only and must not be presented as Uniswap market execution or reused for mainnet.
+Publish `NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS` from the same manifest so the borrower UI
+derives indicative and maximum-rate debt figures from deployed contracts rather than constants.

@@ -1,10 +1,15 @@
 "use client";
 
+import { InterestRateModelAbi, MuseLendPositionManagerAbi, MuseLendRiskManagerAbi, MuseLendUSDCVaultAbi } from "@muselend/abis";
+import { BPS, mulDivDown, mulDivUp, positionLimits, worstCaseDebt } from "@muselend/risk-engine";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { formatUnits, isAddress, parseAbi, parseUnits } from "viem";
-import { useAccount, useReadContracts } from "wagmi";
-import { deploymentConfigured } from "@/lib/contracts";
+import { useEffect, useMemo, useState } from "react";
+import { formatUnits, isAddress, maxUint256, parseAbi, parseUnits, type Address } from "viem";
+import { useAccount, useReadContract, useReadContracts, useSimulateContract, useWriteContract } from "wagmi";
+import { swapQuoteResponse } from "@/lib/api-schemas";
+import { contracts, deploymentConfigured } from "@/lib/contracts";
+import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
+import { TransactionStatus } from "@/components/transaction-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +20,9 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 
 type Props = { disclosures: string[]; acknowledgements: string[] };
-const erc20MetadataAbi = parseAbi([
-  "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)",
-]);
+type Quote = ReturnType<typeof swapQuoteResponse.parse>["quote"];
+type RiskConfig = { enabled: boolean; canonicalZoraVersion: number; riskTier: number; advanceRateBps: number; seniorCoverageBps: number; coverageCapBps: number; maximumPriceImpactBps: number; minimumPositionUsdc: bigint; maximumPositionUsdc: bigint; maximumTokenExposureUsdc: bigint; maximumWalletExposureUsdc: bigint };
+const erc20Abi = parseAbi(["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function decimals() view returns (uint8)", "function symbol() view returns (string)", "function approve(address,uint256) returns (bool)"]);
 
 export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
   const { address, isConnected, chainId } = useAccount();
@@ -27,104 +30,112 @@ export function BorrowPositionPanel({ disclosures, acknowledgements }: Props) {
   const [amount, setAmount] = useState("");
   const [advanceRate, setAdvanceRate] = useState(60);
   const [term, setTerm] = useState(30);
+  const [epoch, setEpoch] = useState("1");
   const [accepted, setAccepted] = useState<boolean[]>(() => acknowledgements.map(() => false));
+  const [quote, setQuote] = useState<Quote>();
+  const [quoteFresh, setQuoteFresh] = useState(false);
   const [status, setStatus] = useState<string>();
   const [loading, setLoading] = useState(false);
   const tokenAddress = isAddress(token) ? token : undefined;
-  const tokenReads = useReadContracts({
-    contracts: tokenAddress && address ? [
-      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "balanceOf", args: [address] },
-      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "decimals" },
-      { address: tokenAddress, abi: erc20MetadataAbi, functionName: "symbol" },
-    ] : [],
-    query: { enabled: Boolean(tokenAddress && address && chainId === 84532) },
-  });
-  const tokenBalance = tokenReads.data?.[0]?.status === "success" ? tokenReads.data[0].result : 0n;
-  const tokenDecimals = tokenReads.data?.[1]?.status === "success" ? tokenReads.data[1].result : 18;
-  const tokenSymbol = tokenReads.data?.[2]?.status === "success" ? tokenReads.data[2].result : "tokens";
+  const manager = contracts.positionManager;
+  const adapter = contracts.swapAdapter;
+  const risk = contracts.riskManager;
+  const rateModel = contracts.interestRateModel;
+  const ready = deploymentConfigured && Boolean(manager && adapter && risk && rateModel) && isConnected && chainId === 84532;
+  const tokenReads = useReadContracts({ contracts: tokenAddress && address && manager ? [
+    { address: tokenAddress, abi: erc20Abi, functionName: "balanceOf", args: [address] },
+    { address: tokenAddress, abi: erc20Abi, functionName: "allowance", args: [address, manager] },
+    { address: tokenAddress, abi: erc20Abi, functionName: "decimals" },
+    { address: tokenAddress, abi: erc20Abi, functionName: "symbol" },
+  ] : [], query: { enabled: Boolean(tokenAddress && address && manager && chainId === 84532) } });
+  const tokenBalance = resultBigInt(tokenReads.data?.[0]);
+  const refetchTokenReads = tokenReads.refetch;
+  const allowance = resultBigInt(tokenReads.data?.[1]);
+  const tokenDecimals = tokenReads.data?.[2]?.status === "success" ? tokenReads.data[2].result as number : 18;
+  const tokenSymbol = tokenReads.data?.[3]?.status === "success" ? tokenReads.data[3].result as string : "tokens";
   const amountAtomic = useMemo(() => safeTokenAmount(amount, tokenDecimals), [amount, tokenDecimals]);
-  const ready = deploymentConfigured && isConnected && chainId === 84532;
-  const balanceSufficient = !isConnected || amountAtomic <= tokenBalance;
-  const formValid = Boolean(tokenAddress) && amountAtomic > 0n && balanceSufficient && accepted.every(Boolean);
+  const configuration = useReadContract({ address: risk, abi: MuseLendRiskManagerAbi, functionName: "getTokenConfig", args: tokenAddress ? [tokenAddress] : undefined, query: { enabled: ready && Boolean(tokenAddress) } });
+  const premiumRead = useReadContract({ address: risk, abi: MuseLendRiskManagerAbi, functionName: "termPremium", args: tokenAddress ? [tokenAddress, term * 86_400] : undefined, query: { enabled: ready && Boolean(tokenAddress), retry: false } });
+  const feeRead = useReadContract({ address: risk, abi: MuseLendRiskManagerAbi, functionName: "originationFeeBps", query: { enabled: ready } });
+  const maxRateRead = useReadContract({ address: rateModel, abi: InterestRateModelAbi, functionName: "maxBorrowRateRay", query: { enabled: ready } });
+  const poolReads = useReadContracts({ contracts: contracts.seniorVault ? [
+    { address: contracts.seniorVault, abi: MuseLendUSDCVaultAbi, functionName: "availableCash" },
+    { address: contracts.seniorVault, abi: MuseLendUSDCVaultAbi, functionName: "totalPrincipalOutstanding" },
+  ] : [], query: { enabled: ready } });
+  const poolCash = resultBigInt(poolReads.data?.[0]);
+  const poolDebt = resultBigInt(poolReads.data?.[1]);
+  const aprRead = useReadContract({ address: rateModel, abi: InterestRateModelAbi, functionName: "borrowRate", args: [poolCash, poolDebt], query: { enabled: ready } });
+  const config = configuration.data as RiskConfig | undefined;
+  const requestedAdvanceBps = BigInt(advanceRate * 100);
+  const quotedProceeds = quote?.kind === "sell" ? BigInt(quote.quotedAmount) : 0n;
+  const minimumProceeds = quote?.kind === "sell" ? BigInt(quote.protectedAmount) : 0n;
+  const principal = mulDivDown(minimumProceeds, requestedAdvanceBps, BPS);
+  const limits = config && quotedProceeds > 0n ? positionLimits({ saleProceeds: quotedProceeds, advanceRateBps: BigInt(config.advanceRateBps), seniorCoverageBps: BigInt(config.seniorCoverageBps), coverageCapBps: BigInt(config.coverageCapBps) }) : undefined;
+  const premiumBps = typeof premiumRead.data === "number" ? BigInt(premiumRead.data) : 0n;
+  const feeBps = typeof feeRead.data === "number" ? BigInt(feeRead.data) : 0n;
+  const premium = limits ? mulDivUp(limits.juniorCoverage, premiumBps, BPS) : 0n;
+  const originationFee = mulDivUp(principal, feeBps, BPS);
+  const netReceived = principal > premium + originationFee ? principal - premium - originationFee : 0n;
+  const maxRate = typeof maxRateRead.data === "bigint" ? maxRateRead.data : 0n;
+  const maximumDebt = worstCaseDebt(principal, maxRate, BigInt((term + 3) * 86_400));
+  const epochId = /^\d+$/.test(epoch) && Number(epoch) > 0 ? Number(epoch) : 0;
+  const balanceSufficient = amountAtomic <= tokenBalance;
+  const quoteMatches = Boolean(quote && quoteFresh && quote.kind === "sell" && quote.amount === amountAtomic.toString() && tokenAddress && quote.adapter.toLowerCase() === adapter?.toLowerCase() && quote.route.creatorToken.toLowerCase() === tokenAddress.toLowerCase());
+  const formValid = Boolean(tokenAddress && amountAtomic > 0n && balanceSufficient && accepted.every(Boolean) && epochId > 0);
+  const route = quote ? { creatorToken: quote.route.creatorToken as Address, usdc: quote.route.usdc as Address, poolId: quote.route.poolId as `0x${string}`, fee: quote.route.fee, tickSpacing: quote.route.tickSpacing, hook: quote.route.hook as Address, minHopPriceX36: BigInt(quote.route.minHopPriceX36) } as const : undefined;
+  const openParams = quote && tokenAddress && adapter && route ? { creatorToken: tokenAddress, adapter, amount: amountAtomic, minUsdcOut: minimumProceeds, principal, term: term * 86_400, epochId, deadline: BigInt(quote.deadline), route } as const : undefined;
+  const simulation = useSimulateContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "openPosition", args: openParams ? [openParams] : undefined, account: address, query: { enabled: ready && formValid && quoteMatches && Boolean(config?.enabled) && requestedAdvanceBps <= BigInt(config?.advanceRateBps ?? 0) && allowance >= amountAtomic } });
+  const transaction = useWriteContract();
+  const receipt = useTrackedTransaction(transaction.data);
+  const busy = loading || transaction.isPending || receipt.status === "confirming";
+
+  useEffect(() => { if (!quote) return; const timeout = window.setTimeout(() => setQuoteFresh(false), Math.max(0, quote.deadline * 1000 - Date.now())); return () => window.clearTimeout(timeout); }, [quote]);
+  useEffect(() => { if (receipt.status === "confirmed") void refetchTokenReads(); }, [receipt.status, refetchTokenReads]);
 
   async function requestQuote() {
     if (!formValid) return;
-    setLoading(true);
-    setStatus(undefined);
+    setLoading(true); setQuote(undefined); setQuoteFresh(false); setStatus(undefined);
     try {
-      const validation = await fetch("/api/token/validate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chainId: 84532, token }),
-      });
-      const validationBody = (await validation.json()) as { valid?: boolean; reason?: string };
-      if (!validation.ok || !validationBody.valid) {
-        setStatus(validationBody.reason ?? "This token is not enabled by the protocol validator.");
-        return;
-      }
-      const response = await fetch("/api/quote/sell", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chainId: 84532,
-          creatorToken: token,
-          amount: amountAtomic.toString(),
-          slippageBps: 100,
-          deadline: Math.floor(Date.now() / 1000) + 300,
-        }),
-      });
-      const body = (await response.json()) as { error?: { message?: string }; message?: string };
-      setStatus(body.error?.message ?? body.message ?? (response.ok ? "Quote ready." : "Quote unavailable."));
-    } catch {
-      setStatus("The quote service could not be reached. No transaction was prepared.");
-    } finally {
-      setLoading(false);
-    }
+      const validation = await fetch("/api/token/validate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chainId: 84532, token }) });
+      const validationBody = await validation.json() as { valid?: boolean; reason?: string };
+      if (!validation.ok || !validationBody.valid) throw new Error(validationBody.reason ?? "This token is not enabled by the protocol validator.");
+      const response = await fetch("/api/quote/sell", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chainId: 84532, creatorToken: token, amount: amountAtomic.toString(), slippageBps: 100, deadline: Math.floor(Date.now() / 1000) + 300 }) });
+      const body: unknown = await response.json();
+      if (!response.ok) throw new Error("No verified sell quote is available.");
+      const parsed = swapQuoteResponse.parse(body).quote;
+      if (parsed.kind !== "sell" || parsed.adapter.toLowerCase() !== adapter?.toLowerCase()) throw new Error("Quote does not match the configured adapter.");
+      setQuote(parsed); setQuoteFresh(true); setStatus("Fresh quote verified. Review every deduction before simulation.");
+    } catch (error) { setStatus(error instanceof Error ? error.message : "The quote failed safely. No transaction was prepared."); }
+    finally { setLoading(false); }
   }
+  function approve() { if (tokenAddress && manager) transaction.writeContract({ address: tokenAddress, abi: erc20Abi, functionName: "approve", args: [manager, maxUint256] }); }
+  function open() { if (simulation.data?.request) { transaction.writeContract(simulation.data.request); invalidateQuote(); } }
+  function invalidateQuote() { setQuote(undefined); setQuoteFresh(false); }
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-      <Card>
-        <CardHeader><CardTitle>Position details</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="token">Creator Token address</Label>
-            <Input id="token" value={token} onChange={(event) => setToken(event.target.value.trim())} placeholder="0x…" />
-            <p className="text-xs text-muted-foreground">Only canonical, enabled Zora Creator Tokens are accepted.</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount to sell</Label>
-            <Input id="amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" />
-            {isConnected && tokenAddress ? <p className="text-xs text-muted-foreground">Wallet balance: {Number(formatUnits(tokenBalance, tokenDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} {tokenSymbol}</p> : null}
-            {!balanceSufficient ? <p className="text-xs text-destructive">Amount exceeds the connected wallet balance.</p> : null}
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm"><Label>Loan amount</Label><span className="font-mono text-muted-foreground">{advanceRate}%</span></div>
-            <Slider value={[advanceRate]} min={10} max={60} step={5} onValueChange={(value) => setAdvanceRate(value[0] ?? 60)} aria-label="Loan amount percentage" />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[7, 14, 30].map((days) => <Button key={days} type="button" variant={days === term ? "default" : "outline"} onClick={() => setTerm(days)}>{days} days</Button>)}
-          </div>
-          <Separator />
-          <section aria-labelledby="borrow-disclosures" className="space-y-3">
-            <h2 id="borrow-disclosures" className="text-sm font-medium">Required disclosures</h2>
-            <ul className="space-y-2 text-sm text-muted-foreground">{disclosures.map((text) => <li key={text} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><span>{text}</span></li>)}</ul>
-          </section>
-          <Separator />
-          <div className="space-y-4">{acknowledgements.map((text, index) => <div key={text} className="flex items-start gap-3"><Checkbox id={`risk-${index}`} checked={accepted[index]} onCheckedChange={(checked) => setAccepted((current) => current.map((value, item) => item === index ? checked === true : value))} /><Label htmlFor={`risk-${index}`} className="font-normal leading-5 text-muted-foreground">{text}</Label></div>)}</div>
-          <Button className="w-full" disabled={!formValid || loading} onClick={requestQuote}>{loading ? "Validating…" : ready ? "Validate and request quote" : "Check availability"}</Button>
-          {status ? <Alert><AlertTitle>Quote status</AlertTitle><AlertDescription>{status}</AlertDescription></Alert> : null}
-        </CardContent>
-      </Card>
-      <div className="space-y-4">
-        <Card><CardHeader><CardTitle className="text-base">Quote summary</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{[["Sale proceeds", "—"], ["Principal", "—"], ["Origination fee", "—"], ["Hedge premium", "—"], ["Net USDC received", "—"], ["Coverage cap", "—"], ["Worst-case debt", "—"]].map(([key, value]) => <div key={key} className="flex justify-between gap-4"><span className="text-muted-foreground">{key}</span><span className="font-mono">{value}</span></div>)}</CardContent></Card>
-        <Alert className="border-amber-300/15 bg-amber-300/5"><AlertTriangle /><AlertTitle>Redemption can be partial</AlertTitle><AlertDescription className="leading-5">Above the cap, you may need to add USDC to recover the full amount. Otherwise the protocol may return fewer tokens. Liquidity, slippage and fees affect the result.</AlertDescription></Alert>
-        {!deploymentConfigured ? <p className="text-sm text-muted-foreground">Verified Base Sepolia addresses are not published yet. The app validates inputs but cannot prepare a transaction.</p> : null}
-      </div>
+  return <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+    <Card><CardHeader><CardTitle>Position details</CardTitle></CardHeader><CardContent className="space-y-6">
+      <div className="space-y-2"><Label htmlFor="token">Creator Token address</Label><Input id="token" value={token} onChange={(event) => { setToken(event.target.value.trim()); invalidateQuote(); }} placeholder="0x…" /><p className="text-xs text-muted-foreground">Only canonical, enabled Zora Creator Tokens are accepted.</p></div>
+      <div className="space-y-2"><Label htmlFor="amount">Amount to sell</Label><Input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); invalidateQuote(); }} placeholder="0.00" />{isConnected && tokenAddress ? <p className="text-xs text-muted-foreground">Wallet balance: {Number(formatUnits(tokenBalance, tokenDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} {tokenSymbol}</p> : null}{!balanceSufficient ? <p className="text-xs text-destructive">Amount exceeds the connected wallet balance.</p> : null}</div>
+      <div className="space-y-3"><div className="flex justify-between text-sm"><Label>Loan amount</Label><span className="font-mono text-muted-foreground">{advanceRate}%</span></div><Slider value={[advanceRate]} min={10} max={60} step={5} onValueChange={(value) => { setAdvanceRate(value[0] ?? 60); invalidateQuote(); }} aria-label="Loan amount percentage" /></div>
+      <div className="grid grid-cols-3 gap-2">{[7, 14, 30].map((days) => <Button key={days} type="button" variant={days === term ? "default" : "outline"} onClick={() => { setTerm(days); invalidateQuote(); }}>{days} days</Button>)}</div>
+      <div className="space-y-2"><Label htmlFor="epoch-id">Junior hedge epoch</Label><Input id="epoch-id" inputMode="numeric" value={epoch} onChange={(event) => { setEpoch(event.target.value); invalidateQuote(); }} /></div>
+      <Separator /><section aria-labelledby="borrow-disclosures" className="space-y-3"><h2 id="borrow-disclosures" className="text-sm font-medium">Required disclosures</h2><ul className="space-y-2 text-sm text-muted-foreground">{disclosures.map((text) => <li key={text} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><span>{text}</span></li>)}</ul></section>
+      <Separator /><div className="space-y-4">{acknowledgements.map((text, index) => <div key={text} className="flex items-start gap-3"><Checkbox id={`risk-${index}`} checked={accepted[index]} onCheckedChange={(checked) => setAccepted((current) => current.map((value, item) => item === index ? checked === true : value))} /><Label htmlFor={`risk-${index}`} className="font-normal leading-5 text-muted-foreground">{text}</Label></div>)}</div>
+      {!quote ? <Button className="w-full" disabled={!formValid || loading} onClick={requestQuote}>{loading ? "Validating…" : ready ? "Validate and request quote" : "Check availability"}</Button> : allowance < amountAtomic ? <Button className="w-full" onClick={approve} disabled={busy}>Approve Creator Token</Button> : <Button className="w-full" onClick={open} disabled={busy || !simulation.data?.request}>Simulate and open position</Button>}
+      {status ? <Alert><AlertTitle>Quote status</AlertTitle><AlertDescription>{status}</AlertDescription></Alert> : null}
+      {simulation.error && quote ? <p className="text-sm text-destructive">Simulation failed. Verify the epoch, liquidity, caps and quote freshness; no transaction was sent.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Position opening" />
+    </CardContent></Card>
+    <div className="space-y-4"><Card><CardHeader><CardTitle className="text-base">Quote summary</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><Summary label="Expected sale proceeds" value={money(quotedProceeds)} /><Summary label="Minimum sale proceeds" value={money(minimumProceeds)} /><Summary label="Principal" value={money(principal)} /><Summary label="Indicative borrow APR" value={rayPercent(typeof aprRead.data === "bigint" ? aprRead.data : 0n)} /><Summary label="Origination fee" value={money(originationFee)} /><Summary label="Hedge premium" value={money(premium)} /><Summary label="Net USDC received" value={money(netReceived)} /><Summary label="Coverage cap" value={money(limits?.coverageCap ?? 0n)} /><Summary label="Junior coverage" value={money(limits?.juniorCoverage ?? 0n)} /><Summary label="Worst-case debt" value={money(maximumDebt)} /></CardContent></Card>
+      <Alert className="border-amber-300/15 bg-amber-300/5"><AlertTriangle /><AlertTitle>Redemption can be partial</AlertTitle><AlertDescription className="leading-5">Above the cap, you may need to add USDC to recover the full amount. Otherwise the protocol may return fewer tokens. Liquidity, slippage and fees affect the result.</AlertDescription></Alert>
+      {!deploymentConfigured ? <p className="text-sm text-muted-foreground">Verified Base Sepolia addresses are not published yet. The app validates inputs but cannot prepare a transaction.</p> : null}
+      {deploymentConfigured && (!adapter || !rateModel) ? <p className="text-sm text-muted-foreground">The verified swap adapter and interest-rate model addresses must be published before quote simulation is enabled.</p> : null}
     </div>
-  );
+  </div>;
 }
 
-function safeTokenAmount(value: string, decimals: number) {
-  try { return value && /^\d+(\.\d{0,18})?$/.test(value) ? parseUnits(value, decimals) : 0n; } catch { return 0n; }
-}
+function resultBigInt(result: { status: string; result?: unknown } | undefined) { return result?.status === "success" && typeof result.result === "bigint" ? result.result : 0n; }
+function safeTokenAmount(value: string, decimals: number) { try { return value && /^\d+(\.\d{0,18})?$/.test(value) ? parseUnits(value, decimals) : 0n; } catch { return 0n; } }
+function money(value: bigint) { return value === 0n ? "—" : `${Number(formatUnits(value, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`; }
+function rayPercent(value: bigint) { return value === 0n ? "—" : `${(Number(value) / 1e25).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`; }
+function Summary({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="text-right font-mono">{value}</span></div>; }

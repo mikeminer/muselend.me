@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { POST as buyExactOutput } from "@/app/api/quote/buy-exact-output/route";
-import { divideUp } from "./testnet-quote";
+import { divideUp, quoteAmounts } from "./testnet-quote";
 
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_SWAP_ADAPTER_ADDRESS;
@@ -12,6 +12,11 @@ describe("testnet buy quote", () => {
   it("rounds exact-output cost upward", () => {
     expect(divideUp(10n, 3n)).toBe(4n);
     expect(divideUp(0n, 3n)).toBe(0n);
+  });
+
+  it("protects sell proceeds downward and exact-output cost upward", () => {
+    expect(quoteAmounts("sell", 2n * 10n ** 18n, 10n * 10n ** 6n, 100)).toEqual({ quoted: 20n * 10n ** 6n, protectedAmount: 19_800_000n });
+    expect(quoteAmounts("buy-exact-output", 2n * 10n ** 18n, 10n * 10n ** 6n, 100)).toEqual({ quoted: 20n * 10n ** 6n, protectedAmount: 20_200_000n });
   });
 
   it("fails closed without a verified adapter deployment", async () => {

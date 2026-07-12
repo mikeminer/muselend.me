@@ -4,6 +4,7 @@ const seniorVault = process.env.NEXT_PUBLIC_SENIOR_VAULT_ADDRESS;
 const hedgeEpochVault = process.env.NEXT_PUBLIC_HEDGE_EPOCH_VAULT_ADDRESS;
 const positionManager = process.env.NEXT_PUBLIC_POSITION_MANAGER_ADDRESS;
 const swapAdapter = process.env.NEXT_PUBLIC_SWAP_ADAPTER_ADDRESS;
+const interestRateModel = process.env.NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS;
 const creatorTokenValidator = process.env.NEXT_PUBLIC_CREATOR_TOKEN_VALIDATOR_ADDRESS;
 const creatorToken = process.env.NEXT_PUBLIC_CREATOR_TOKEN_ADDRESS;
 const riskManager = process.env.NEXT_PUBLIC_RISK_MANAGER_ADDRESS;
@@ -20,6 +21,7 @@ export const contracts = {
   hedgeEpochVault: optionalAddress(hedgeEpochVault),
   positionManager: optionalAddress(positionManager),
   swapAdapter: optionalAddress(swapAdapter),
+  interestRateModel: optionalAddress(interestRateModel),
   creatorTokenValidator: optionalAddress(creatorTokenValidator),
   creatorToken: optionalAddress(creatorToken),
   riskManager: optionalAddress(riskManager),

@@ -27,6 +27,9 @@ importers:
       '@muselend/indexer':
         specifier: workspace:*
         version: link:../../packages/indexer
+      '@muselend/risk-engine':
+        specifier: workspace:*
+        version: link:../../packages/risk-engine
       '@neondatabase/serverless':
         specifier: 1.1.0
         version: 1.1.0

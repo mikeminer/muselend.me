@@ -7,7 +7,7 @@ import { quoteRequest } from "@/lib/api-schemas";
 
 const mockAdapterAbi = parseAbi(["function priceUsdcPerToken() view returns (uint256)"]);
 
-export async function testnetBuyQuote(request: Request, kind: "buy-exact-output" | "buy-exact-input") {
+export async function testnetQuote(request: Request, kind: "sell" | "buy-exact-output" | "buy-exact-input") {
   const context = await requestContext(request, 20);
   if (context.limited) return rateLimitResponse(context.requestId);
   const body = await parseBody(request, quoteRequest, context.requestId);
@@ -34,12 +34,7 @@ export async function testnetBuyQuote(request: Request, kind: "buy-exact-output"
     ]));
     if (!code || code === "0x" || !allowed || !canonical || price <= 0n) throw new Error("Unverified adapter or token");
     const amount = BigInt(body.amount);
-    const quoted = kind === "buy-exact-output"
-      ? divideUp(amount * price, 10n ** 18n)
-      : amount * 10n ** 18n / price;
-    const protectedAmount = kind === "buy-exact-output"
-      ? divideUp(quoted * BigInt(10_000 + body.slippageBps), 10_000n)
-      : quoted * BigInt(10_000 - body.slippageBps) / 10_000n;
+    const { quoted, protectedAmount } = quoteAmounts(kind, amount, price, body.slippageBps);
     completeRequest(context, 200);
     return NextResponse.json({
       quote: {
@@ -60,6 +55,18 @@ export async function testnetBuyQuote(request: Request, kind: "buy-exact-output"
   }
 }
 
+export const testnetBuyQuote = testnetQuote;
+
 export function divideUp(numerator: bigint, denominator: bigint) {
   return numerator === 0n ? 0n : (numerator - 1n) / denominator + 1n;
+}
+
+export function quoteAmounts(kind: "sell" | "buy-exact-output" | "buy-exact-input", amount: bigint, price: bigint, slippageBps: number) {
+  const quoted = kind === "buy-exact-output"
+    ? divideUp(amount * price, 10n ** 18n)
+    : kind === "buy-exact-input" ? amount * 10n ** 18n / price : amount * price / 10n ** 18n;
+  const protectedAmount = kind === "buy-exact-output"
+    ? divideUp(quoted * BigInt(10_000 + slippageBps), 10_000n)
+    : quoted * BigInt(10_000 - slippageBps) / 10_000n;
+  return { quoted, protectedAmount };
 }

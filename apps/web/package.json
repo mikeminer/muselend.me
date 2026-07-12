@@ -16,6 +16,7 @@
   "dependencies": {
     "@muselend/abis": "workspace:*",
     "@muselend/indexer": "workspace:*",
+    "@muselend/risk-engine": "workspace:*",
     "@neondatabase/serverless": "1.1.0",
     "@tanstack/react-query": "5.101.2",
     "@upstash/redis": "1.38.0",

@@ -1,1 +1,5 @@
-import {unavailableQuote} from "@/lib/quote-response";export async function POST(request:Request){return unavailableQuote(request,"sell")}
+import { testnetQuote } from "@/lib/testnet-quote";
+
+export async function POST(request: Request) {
+  return testnetQuote(request, "sell");
+}
