@@ -8,6 +8,7 @@ const creatorToken = process.env.NEXT_PUBLIC_CREATOR_TOKEN_ADDRESS;
 const riskManager = process.env.NEXT_PUBLIC_RISK_MANAGER_ADDRESS;
 const timelock = process.env.NEXT_PUBLIC_TIMELOCK_ADDRESS;
 const usdc = process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const deploymentBlockValue = process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK;
 
 function optionalAddress(value: string | undefined): Address | undefined {
   return value && isAddress(value) ? value : undefined;
@@ -27,3 +28,7 @@ export const contracts = {
 export const deploymentConfigured = Boolean(
   contracts.seniorVault && contracts.hedgeEpochVault && contracts.positionManager && contracts.creatorTokenValidator && contracts.creatorToken && contracts.riskManager && contracts.timelock && contracts.usdc,
 );
+
+export const deploymentBlock = deploymentBlockValue && /^\d+$/.test(deploymentBlockValue)
+  ? BigInt(deploymentBlockValue)
+  : undefined;

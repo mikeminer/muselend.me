@@ -6,7 +6,7 @@ const secret = "s".repeat(32);
 afterEach(() => {
   delete process.env.INDEXER_SYNC_SECRET;
   delete process.env.BASE_SEPOLIA_RPC_URL;
-  delete process.env.DEPLOYMENT_BLOCK;
+  delete process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK;
 });
 
 function request(authorization?: string) {

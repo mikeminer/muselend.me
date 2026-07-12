@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (!authorized(request.headers.get("authorization"), expected)) return apiError(context.requestId, 401, "UNAUTHORIZED", "Valid sync authorization required");
 
   const rpcUrl = process.env.BASE_SEPOLIA_RPC_URL;
-  const deployment = process.env.DEPLOYMENT_BLOCK;
+  const deployment = process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK;
   const addresses = configuredIndexerAddresses();
   if (!rpcUrl || !deployment || !/^\d+$/.test(deployment) || addresses.length === 0) {
     return apiError(context.requestId, 503, "DEPLOYMENT_MISSING", "Verified Base Sepolia deployment configuration is incomplete");

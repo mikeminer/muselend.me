@@ -6,6 +6,7 @@ import { useAccount, useBlock, useReadContracts, useWriteContract } from "wagmi"
 import { contracts, deploymentConfigured } from "@/lib/contracts";
 import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
 import { TransactionStatus } from "@/components/transaction-status";
+import { PositionHistory } from "@/components/position-history";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
       <p className="text-sm text-muted-foreground">Full and capped buyback actions require a fresh verified swap quote and remain unavailable until the quote adapter is configured.</p>
       <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Position transaction" />
     </CardContent></Card>
+    <PositionHistory id={id} enabled={enabled} />
   </div>;
 }
 

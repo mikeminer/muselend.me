@@ -8,7 +8,7 @@ database or Redis credentials; external clients initialize lazily when configure
 
 `POST /api/indexer/sync` advances the Base Sepolia event cursor through finalized
 blocks only. It requires `Authorization: Bearer <INDEXER_SYNC_SECRET>`, a secret of at
-least 32 characters, `BASE_SEPOLIA_RPC_URL`, `DATABASE_URL`, `DEPLOYMENT_BLOCK`, and at
+least 32 characters, `BASE_SEPOLIA_RPC_URL`, `DATABASE_URL`, `NEXT_PUBLIC_DEPLOYMENT_BLOCK`, and at
 least one verified deployment address. The route fails closed if any of these are absent.
 
 Invoke it from an authenticated scheduler no more than once per minute. Each run uses
