@@ -3,11 +3,15 @@ pragma solidity 0.8.35;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
-/// @notice Versioned allowlist used until factory-level Zora validation is configured per network.
+/// @notice Timelocked registry backed by live Zora Creator Coin interface checks.
 contract CreatorTokenValidator is AccessControl {
     bytes32 public constant VALIDATOR_ADMIN_ROLE = keccak256("VALIDATOR_ADMIN_ROLE");
     mapping(address token => uint8 version) public canonicalVersion;
+    mapping(address token => bytes32 responseHash) public canonicalContractVersion;
+    mapping(address token => bytes32 responseHash) public canonicalPoolKey;
     event CanonicalTokenUpdated(address indexed token, uint8 indexed version);
+
+    error InvalidCreatorToken();
 
     constructor(address admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -15,12 +19,45 @@ contract CreatorTokenValidator is AccessControl {
     }
 
     function setCanonical(address token, uint8 version) external onlyRole(VALIDATOR_ADMIN_ROLE) {
-        require(token != address(0), "zero token");
+        (bool valid, bytes32 versionHash, bytes32 poolHash) = _inspect(token);
+        if (!valid || version == 0) revert InvalidCreatorToken();
         canonicalVersion[token] = version;
+        canonicalContractVersion[token] = versionHash;
+        canonicalPoolKey[token] = poolHash;
         emit CanonicalTokenUpdated(token, version);
     }
 
     function validate(address token, uint8 requiredVersion) external view returns (bool) {
-        return requiredVersion != 0 && canonicalVersion[token] == requiredVersion;
+        if (requiredVersion == 0 || canonicalVersion[token] != requiredVersion) return false;
+        (bool valid, bytes32 versionHash, bytes32 poolHash) = _inspect(token);
+        return valid && canonicalContractVersion[token] == versionHash && canonicalPoolKey[token] == poolHash;
+    }
+
+    function _inspect(address token)
+        internal
+        view
+        returns (bool valid, bytes32 versionHash, bytes32 poolHash)
+    {
+        if (token.code.length == 0) {
+            return (false, bytes32(0), bytes32(0));
+        }
+
+        (bool typeOk, bytes memory typeData) = token.staticcall(abi.encodeWithSignature("coinType()"));
+        if (!typeOk || typeData.length != 32 || abi.decode(typeData, (uint256)) != 0) {
+            return (false, bytes32(0), bytes32(0));
+        }
+
+        (bool versionOk, bytes memory versionData) =
+            token.staticcall(abi.encodeWithSignature("contractVersion()"));
+        if (!versionOk || versionData.length < 96) return (false, bytes32(0), bytes32(0));
+
+        (bool poolOk, bytes memory poolData) = token.staticcall(abi.encodeWithSignature("getPoolKey()"));
+        if (!poolOk || poolData.length != 160) return (false, bytes32(0), bytes32(0));
+        (address currency0, address currency1,,, address hook) =
+            abi.decode(poolData, (address, address, uint24, int24, address));
+        if ((currency0 != token && currency1 != token) || hook == address(0)) {
+            return (false, bytes32(0), bytes32(0));
+        }
+        return (true, keccak256(versionData), keccak256(poolData));
     }
 }

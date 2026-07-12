@@ -11,16 +11,17 @@ import { MuseLendHedgeEpochVault } from "../src/MuseLendHedgeEpochVault.sol";
 import { MuseLendPositionReceipt } from "../src/MuseLendPositionReceipt.sol";
 import { MuseLendPositionManager } from "../src/MuseLendPositionManager.sol";
 import { ProtocolTreasury } from "../src/ProtocolTreasury.sol";
-import { MockERC20 } from "../src/mocks/MockERC20.sol";
+import { MockZoraCreatorToken } from "../src/mocks/MockZoraCreatorToken.sol";
 import { MockSwapAdapter } from "../src/mocks/MockSwapAdapter.sol";
 
 contract DeployBaseSepolia is Script {
     address constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+    address constant BASE_SEPOLIA_ZORA_V4_HOOK = 0xe0eC17Ab9f7ce52cC60DFB64E0A0A705d02Bd040;
     error WrongChain();
     error InvalidCanonicalUsdc();
 
     struct Deployment {
-        MockERC20 creatorToken;
+        MockZoraCreatorToken creatorToken;
         MockSwapAdapter adapter;
         InterestRateModel rateModel;
         MuseLendRiskManager riskManager;
@@ -47,7 +48,7 @@ contract DeployBaseSepolia is Script {
         address[] memory executors = new address[](1);
         executors[0] = address(0);
         d.timelock = new TimelockController(1 days, proposers, executors, address(0));
-        d.creatorToken = new MockERC20("Mock Zora Creator Token", "mCREATOR", 18);
+        d.creatorToken = new MockZoraCreatorToken(BASE_SEPOLIA_USDC, BASE_SEPOLIA_ZORA_V4_HOOK);
         d.adapter = new MockSwapAdapter(10e6);
         d.rateModel = new InterestRateModel(
             InterestRateModel.Config(

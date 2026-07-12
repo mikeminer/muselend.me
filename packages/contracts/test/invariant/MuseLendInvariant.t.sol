@@ -10,12 +10,13 @@ import { MuseLendRiskManager } from "../../src/MuseLendRiskManager.sol";
 import { CreatorTokenValidator } from "../../src/CreatorTokenValidator.sol";
 import { MuseLendPositionManager } from "../../src/MuseLendPositionManager.sol";
 import { MockERC20 } from "../../src/mocks/MockERC20.sol";
+import { MockZoraCreatorToken } from "../../src/mocks/MockZoraCreatorToken.sol";
 import { MockSwapAdapter } from "../../src/mocks/MockSwapAdapter.sol";
 import { ProtocolHandler } from "./ProtocolHandler.sol";
 
 contract MuseLendInvariant is StdInvariant, Test {
     MockERC20 usdc;
-    MockERC20 creator;
+    MockZoraCreatorToken creator;
     MuseLendUSDCVault senior;
     MuseLendHedgeEpochVault junior;
     MuseLendPositionManager manager;
@@ -24,7 +25,7 @@ contract MuseLendInvariant is StdInvariant, Test {
     function setUp() public {
         address admin = address(this);
         usdc = new MockERC20("USDC", "USDC", 6);
-        creator = new MockERC20("Creator", "CRT", 18);
+        creator = new MockZoraCreatorToken(address(usdc), makeAddr("zoraHook"));
         MockSwapAdapter adapter = new MockSwapAdapter(10e6);
         InterestRateModel rate = new InterestRateModel(
             InterestRateModel.Config(

@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.35;
+
+import { Test } from "forge-std/Test.sol";
+import { CreatorTokenValidator } from "../src/CreatorTokenValidator.sol";
+import { MockERC20 } from "../src/mocks/MockERC20.sol";
+import { MockZoraCreatorToken } from "../src/mocks/MockZoraCreatorToken.sol";
+
+contract CreatorTokenValidatorTest is Test {
+    CreatorTokenValidator validator;
+    MockERC20 currency;
+
+    function setUp() public {
+        validator = new CreatorTokenValidator(address(this));
+        currency = new MockERC20("USDC", "USDC", 6);
+    }
+
+    function testRegistersAndLiveValidatesCreatorCoin() public {
+        MockZoraCreatorToken token = new MockZoraCreatorToken(address(currency), makeAddr("hook"));
+        validator.setCanonical(address(token), 4);
+        assertTrue(validator.validate(address(token), 4));
+        assertFalse(validator.validate(address(token), 3));
+    }
+
+    function testRejectsGenericErc20() public {
+        vm.expectRevert(CreatorTokenValidator.InvalidCreatorToken.selector);
+        validator.setCanonical(address(currency), 4);
+    }
+
+    function testRejectsContentCoinType() public {
+        MutableCoin token = new MutableCoin(address(currency), makeAddr("hook"));
+        token.setCoinType(1);
+        vm.expectRevert(CreatorTokenValidator.InvalidCreatorToken.selector);
+        validator.setCanonical(address(token), 4);
+    }
+
+    function testReturnsFalseWhenRegisteredPoolChanges() public {
+        MutableCoin token = new MutableCoin(address(currency), makeAddr("hook"));
+        validator.setCanonical(address(token), 4);
+        assertTrue(validator.validate(address(token), 4));
+        token.setHook(makeAddr("replacementHook"));
+        assertFalse(validator.validate(address(token), 4));
+    }
+}
+
+contract MutableCoin {
+    address public immutable currency;
+    address public hook;
+    uint8 public kind;
+
+    constructor(address currency_, address hook_) {
+        currency = currency_;
+        hook = hook_;
+    }
+
+    function setHook(address hook_) external {
+        hook = hook_;
+    }
+
+    function setCoinType(uint8 kind_) external {
+        kind = kind_;
+    }
+
+    function coinType() external view returns (uint8) {
+        return kind;
+    }
+
+    function contractVersion() external pure returns (string memory) {
+        return "2.6.1-test";
+    }
+
+    function getPoolKey() external view returns (address, address, uint24, int24, address) {
+        return address(this) < currency
+            ? (address(this), currency, 10_000, int24(200), hook)
+            : (currency, address(this), 10_000, int24(200), hook);
+    }
+}
