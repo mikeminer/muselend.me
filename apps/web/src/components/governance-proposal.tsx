@@ -2,6 +2,7 @@
 
 import { MuseLendPositionManagerAbi, MuseLendRiskManagerAbi } from "@muselend/abis";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { encodeFunctionData, isAddress, keccak256, parseAbi, parseUnits, toBytes, zeroHash, type Address, type Hex } from "viem";
 import { useAccount, useReadContract, useSimulateContract, useWriteContract } from "wagmi";
 import { contracts } from "@/lib/contracts";
@@ -25,6 +26,7 @@ type Action = "caps" | "fee" | "adapter" | "market";
 export type TokenConfig = { enabled: boolean; canonicalZoraVersion: number; riskTier: number; advanceRateBps: number; seniorCoverageBps: number; coverageCapBps: number; maximumPriceImpactBps: number; minimumPositionUsdc: bigint; maximumPositionUsdc: bigint; maximumTokenExposureUsdc: bigint; maximumWalletExposureUsdc: bigint };
 
 export function GovernanceProposal() {
+  const t = useTranslations("Admin");
   const { address } = useAccount();
   const [action, setAction] = useState<Action>("caps");
   const [seniorCap, setSeniorCap] = useState("250000");
@@ -62,17 +64,17 @@ export function GovernanceProposal() {
   const receipt = useTrackedTransaction(transaction.data);
   const busy = transaction.isPending || receipt.status === "confirming";
 
-  return <Card><CardHeader><CardTitle>Timelocked governance proposal</CardTitle></CardHeader><CardContent className="space-y-4">
-    <p className="text-sm text-muted-foreground">The target call is first simulated as the timelock. Scheduling is enabled only for a verified proposer and never bypasses the minimum delay.</p>
-    <div className="space-y-2"><Label htmlFor="proposal-action">Action</Label><select id="proposal-action" className="h-9 w-full rounded-lg border bg-background px-3 text-sm" value={action} onChange={(event) => setAction(event.target.value as Action)}><option value="caps">Set global caps</option><option value="fee">Set origination fee</option><option value="adapter">Configure adapter</option><option value="market">Enable or disable Creator market</option></select></div>
-    {action === "caps" ? <div className="grid gap-3 sm:grid-cols-2"><Field id="senior-cap" label="Senior debt cap (USDC)" value={seniorCap} onChange={setSeniorCap} /><Field id="junior-cap" label="Junior coverage cap (USDC)" value={juniorCap} onChange={setJuniorCap} /></div> : null}
-    {action === "fee" ? <Field id="fee-bps" label="Origination fee (bps, max 200)" value={feeBps} onChange={setFeeBps} /> : null}
-    {action === "adapter" ? <><Field id="adapter-address" label="Adapter address" value={adapter} onChange={setAdapter} /><div className="flex items-center gap-3"><Checkbox id="adapter-allowed" checked={adapterAllowed} onCheckedChange={(checked) => setAdapterAllowed(checked === true)} /><Label htmlFor="adapter-allowed">Adapter allowed</Label></div></> : null}
-    {action === "market" ? <div className="space-y-3 rounded-lg border p-3"><div className="flex items-center gap-3"><Checkbox id="market-enabled" checked={marketEnabled} onCheckedChange={(checked) => setMarketEnabled(checked === true)} /><Label htmlFor="market-enabled">Creator Token market enabled</Label></div><p className="text-xs text-muted-foreground">All existing risk limits and canonical version are preserved from the deployed config.</p></div> : null}
-    <Field id="proposal-label" label="Unique proposal label" value={label} onChange={setLabel} />
-    <div className="space-y-2 rounded-lg border p-3 font-mono text-xs"><p>Timelock: {timelock ?? "—"}</p><p>Delay: {typeof delay.data === "bigint" ? `${delay.data / 3600n} hours` : "—"}</p><p>Target: {target ?? "—"}</p><p className="break-all">Operation: {operationId.data ?? "—"}</p><p>Direct simulation: {directReady ? "passed" : "not ready"}</p><p>Connected proposer: {proposer.data === true ? "yes" : "no"}</p><p>Already pending: {pending.data === true ? "yes" : "no"}</p></div>
-    <Button onClick={() => scheduleSimulation.data?.request && transaction.writeContract(scheduleSimulation.data.request)} disabled={busy || !scheduleSimulation.data?.request}>{busy ? "Confirming…" : "Schedule through timelock"}</Button>
-    <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Governance schedule" />
+  return <Card><CardHeader><CardTitle>{t("proposalTitle")}</CardTitle></CardHeader><CardContent className="space-y-4">
+    <p className="text-sm text-muted-foreground">{t("proposalHelp")}</p>
+    <div className="space-y-2"><Label htmlFor="proposal-action">{t("action")}</Label><select id="proposal-action" className="h-9 w-full rounded-lg border bg-background px-3 text-sm" value={action} onChange={(event) => setAction(event.target.value as Action)}><option value="caps">{t("actionCaps")}</option><option value="fee">{t("actionFee")}</option><option value="adapter">{t("actionAdapter")}</option><option value="market">{t("actionMarket")}</option></select></div>
+    {action === "caps" ? <div className="grid gap-3 sm:grid-cols-2"><Field id="senior-cap" label={t("seniorCapField")} value={seniorCap} onChange={setSeniorCap} /><Field id="junior-cap" label={t("juniorCapField")} value={juniorCap} onChange={setJuniorCap} /></div> : null}
+    {action === "fee" ? <Field id="fee-bps" label={t("feeField")} value={feeBps} onChange={setFeeBps} /> : null}
+    {action === "adapter" ? <><Field id="adapter-address" label={t("adapterAddress")} value={adapter} onChange={setAdapter} /><div className="flex items-center gap-3"><Checkbox id="adapter-allowed" checked={adapterAllowed} onCheckedChange={(checked) => setAdapterAllowed(checked === true)} /><Label htmlFor="adapter-allowed">{t("adapterAllowed")}</Label></div></> : null}
+    {action === "market" ? <div className="space-y-3 rounded-lg border p-3"><div className="flex items-center gap-3"><Checkbox id="market-enabled" checked={marketEnabled} onCheckedChange={(checked) => setMarketEnabled(checked === true)} /><Label htmlFor="market-enabled">{t("creatorMarketEnabled")}</Label></div><p className="text-xs text-muted-foreground">{t("marketHelp")}</p></div> : null}
+    <Field id="proposal-label" label={t("proposalLabel")} value={label} onChange={setLabel} />
+    <div className="space-y-2 rounded-lg border p-3 font-mono text-xs"><p>{t("timelock")}: {timelock ?? "—"}</p><p>{typeof delay.data === "bigint" ? t("delay", { hours: (delay.data / 3600n).toString() }) : t("delay", { hours: "—" })}</p><p>{t("target", { target: target ?? "—" })}</p><p className="break-all">{t("operation", { operation: operationId.data ?? "—" })}</p><p>{t("directSimulation", { status: directReady ? t("passed") : t("notReady") })}</p><p>{t("proposer", { status: proposer.data === true ? t("yes") : t("no") })}</p><p>{t("pending", { status: pending.data === true ? t("yes") : t("no") })}</p></div>
+    <Button onClick={() => scheduleSimulation.data?.request && transaction.writeContract(scheduleSimulation.data.request)} disabled={busy || !scheduleSimulation.data?.request}>{busy ? t("confirming") : t("schedule")}</Button>
+    <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("scheduleTransaction")} />
   </CardContent></Card>;
 }
 

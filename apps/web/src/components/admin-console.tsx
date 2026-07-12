@@ -2,6 +2,7 @@
 
 import { MuseLendPositionManagerAbi, MuseLendRiskManagerAbi } from "@muselend/abis";
 import { keccak256, toBytes } from "viem";
+import { useTranslations } from "next-intl";
 import {
   useAccount,
   useReadContracts,
@@ -23,6 +24,7 @@ const adapterAdminRole = keccak256(toBytes("ADAPTER_ADMIN_ROLE"));
 type TokenConfig = { enabled: boolean; canonicalZoraVersion: number; riskTier: number; advanceRateBps: number; seniorCoverageBps: number; coverageCapBps: number; maximumPriceImpactBps: number; minimumPositionUsdc: bigint; maximumPositionUsdc: bigint; maximumTokenExposureUsdc: bigint; maximumWalletExposureUsdc: bigint };
 
 export function AdminConsole() {
+  const t = useTranslations("Admin");
   const { address, chainId, isConnected } = useAccount();
   const riskManager = contracts.riskManager;
   const manager = contracts.positionManager;
@@ -78,48 +80,48 @@ export function AdminConsole() {
   const receipt = useTrackedTransaction(transaction.data);
   const busy = transaction.isPending || receipt.status === "confirming";
 
-  if (!deploymentConfigured) return <Alert><AlertTitle>Testnet deployment not configured</AlertTitle><AlertDescription>The console is fail-closed until every verified address, including RiskManager and timelock, is published.</AlertDescription></Alert>;
-  if (!manager || !token || !adapter || !timelock) return <Alert><AlertTitle>Governance configuration incomplete</AlertTitle><AlertDescription>PositionManager, Creator Token, adapter and timelock addresses must all come from the verified deployment manifest.</AlertDescription></Alert>;
-  if (!isConnected) return <Alert><AlertTitle>Connect a wallet</AlertTitle><AlertDescription>Role checks are performed directly against the deployed AccessControl contracts.</AlertDescription></Alert>;
-  if (chainId !== 84532) return <Alert><AlertTitle>Wrong network</AlertTitle><AlertDescription>Switch to Base Sepolia. Mainnet administrative actions are disabled.</AlertDescription></Alert>;
+  if (!deploymentConfigured) return <Alert><AlertTitle>{t("deploymentTitle")}</AlertTitle><AlertDescription>{t("deploymentText")}</AlertDescription></Alert>;
+  if (!manager || !token || !adapter || !timelock) return <Alert><AlertTitle>{t("configTitle")}</AlertTitle><AlertDescription>{t("configText")}</AlertDescription></Alert>;
+  if (!isConnected) return <Alert><AlertTitle>{t("connectTitle")}</AlertTitle><AlertDescription>{t("connectText")}</AlertDescription></Alert>;
+  if (chainId !== 84532) return <Alert><AlertTitle>{t("networkTitle")}</AlertTitle><AlertDescription>{t("networkText")}</AlertDescription></Alert>;
 
   return <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-3">
-      <StatusCard title="Openings" active={!openingsPaused} />
-      <StatusCard title="Deposits" active={!depositsPaused} />
-      <StatusCard title="Mainnet" active={mainnetEnabled} danger />
+      <StatusCard title={t("openings")} active={!openingsPaused} activeLabel={t("enabled")} inactiveLabel={t("disabled")} />
+      <StatusCard title={t("deposits")} active={!depositsPaused} activeLabel={t("enabled")} inactiveLabel={t("disabled")} />
+      <StatusCard title={t("mainnet")} active={mainnetEnabled} activeLabel={t("enabled")} inactiveLabel={t("disabled")} danger />
     </div>
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card><CardHeader><CardTitle>Verified wallet roles</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
-        <Role label="Connected wallet risk admin" active={isRiskAdmin} />
-        <Role label="Pause guardian" active={isGuardian} />
-        <Role label="Timelock risk admin" active={timelockRiskAdmin} />
-        <Role label="Timelock adapter admin" active={timelockAdapterAdmin} />
-        {!isRiskAdmin && !isGuardian ? <p className="text-muted-foreground">This wallet has read-only access.</p> : null}
+      <Card><CardHeader><CardTitle>{t("roles")}</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
+        <Role label={t("walletRiskAdmin")} active={isRiskAdmin} activeLabel={t("granted")} inactiveLabel={t("notGranted")} />
+        <Role label={t("guardian")} active={isGuardian} activeLabel={t("granted")} inactiveLabel={t("notGranted")} />
+        <Role label={t("timelockRiskAdmin")} active={timelockRiskAdmin} activeLabel={t("granted")} inactiveLabel={t("notGranted")} />
+        <Role label={t("timelockAdapterAdmin")} active={timelockAdapterAdmin} activeLabel={t("granted")} inactiveLabel={t("notGranted")} />
+        {!isRiskAdmin && !isGuardian ? <p className="text-muted-foreground">{t("readOnly")}</p> : null}
       </CardContent></Card>
-      <Card><CardHeader><CardTitle>Current risk envelope</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
-        <Row label="Senior debt cap" value={`${formatUsdc(seniorCap)} USDC`} />
-        <Row label="Junior coverage cap" value={`${formatUsdc(juniorCap)} USDC`} />
-        <Row label="Origination fee" value={`${feeBps / 100}%`} />
-        <Row label="Timelock" value={short(contracts.timelock)} />
-        <Row label="Configured adapter" value={`${short(adapter)} · ${adapterAllowed ? "allowed" : "blocked"}`} />
-        <Row label="Creator market" value={tokenConfig?.enabled ? `enabled · tier ${tokenConfig.riskTier}` : "disabled"} />
-        <Row label="Advance / coverage / cap" value={tokenConfig ? `${bps(tokenConfig.advanceRateBps)} / ${bps(tokenConfig.seniorCoverageBps)} / ${bps(tokenConfig.coverageCapBps)}` : "—"} />
+      <Card><CardHeader><CardTitle>{t("envelope")}</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
+        <Row label={t("seniorCap")} value={`${formatUsdc(seniorCap)} USDC`} />
+        <Row label={t("juniorCap")} value={`${formatUsdc(juniorCap)} USDC`} />
+        <Row label={t("fee")} value={`${feeBps / 100}%`} />
+        <Row label={t("timelock")} value={short(contracts.timelock, t("notConfigured"))} />
+        <Row label={t("adapter")} value={`${short(adapter, t("notConfigured"))} · ${adapterAllowed ? t("allowed") : t("blocked")}`} />
+        <Row label={t("market")} value={tokenConfig?.enabled ? t("marketEnabled", { tier: tokenConfig.riskTier }) : t("disabled")} />
+        <Row label={t("advance")} value={tokenConfig ? `${bps(tokenConfig.advanceRateBps)} / ${bps(tokenConfig.seniorCoverageBps)} / ${bps(tokenConfig.coverageCapBps)}` : "—"} />
       </CardContent></Card>
     </div>
-    <Card><CardHeader><CardTitle>Emergency controls</CardTitle></CardHeader><CardContent className="space-y-4">
-      <p className="text-sm text-muted-foreground">Every enabled write is simulated with the connected account before the wallet receives a request.</p>
-      {!openingsPaused && isGuardian ? <Button variant="destructive" disabled={!pauseSimulation.data?.request || busy} onClick={() => pauseSimulation.data?.request && transaction.writeContract(pauseSimulation.data.request)}>{busy ? "Confirming…" : "Pause new risk"}</Button> : null}
-      {openingsPaused && isRiskAdmin ? <Button disabled={!unpauseSimulation.data?.request || busy} onClick={() => unpauseSimulation.data?.request && transaction.writeContract(unpauseSimulation.data.request)}>{busy ? "Confirming…" : "Unpause after review"}</Button> : null}
-      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Governance transaction" />
+    <Card><CardHeader><CardTitle>{t("emergency")}</CardTitle></CardHeader><CardContent className="space-y-4">
+      <p className="text-sm text-muted-foreground">{t("simulationHelp")}</p>
+      {!openingsPaused && isGuardian ? <Button variant="destructive" disabled={!pauseSimulation.data?.request || busy} onClick={() => pauseSimulation.data?.request && transaction.writeContract(pauseSimulation.data.request)}>{busy ? t("confirming") : t("pause")}</Button> : null}
+      {openingsPaused && isRiskAdmin ? <Button disabled={!unpauseSimulation.data?.request || busy} onClick={() => unpauseSimulation.data?.request && transaction.writeContract(unpauseSimulation.data.request)}>{busy ? t("confirming") : t("unpause")}</Button> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("transaction")} />
     </CardContent></Card>
     <GovernanceProposal />
   </div>;
 }
 
-function StatusCard({ title, active, danger = false }: { title: string; active: boolean; danger?: boolean }) { return <Card><CardContent className="flex items-center justify-between pt-6"><span>{title}</span><Badge variant={active && danger ? "destructive" : "outline"}>{active ? "Enabled" : "Disabled"}</Badge></CardContent></Card>; }
-function Role({ label, active }: { label: string; active: boolean }) { return <div className="flex items-center justify-between"><span>{label}</span><Badge variant="outline">{active ? "Granted" : "Not granted"}</Badge></div>; }
+function StatusCard({ title, active, activeLabel, inactiveLabel, danger = false }: { title: string; active: boolean; activeLabel: string; inactiveLabel: string; danger?: boolean }) { return <Card><CardContent className="flex items-center justify-between pt-6"><span>{title}</span><Badge variant={active && danger ? "destructive" : "outline"}>{active ? activeLabel : inactiveLabel}</Badge></CardContent></Card>; }
+function Role({ label, active, activeLabel, inactiveLabel }: { label: string; active: boolean; activeLabel: string; inactiveLabel: string }) { return <div className="flex items-center justify-between"><span>{label}</span><Badge variant="outline">{active ? activeLabel : inactiveLabel}</Badge></div>; }
 function Row({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="break-all text-right font-mono">{value}</span></div>; }
 function formatUsdc(value: bigint) { return (Number(value) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
 function bps(value: number) { return `${(value / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`; }
-function short(value: string | undefined) { return value ? `${value.slice(0, 8)}…${value.slice(-6)}` : "Not configured"; }
+function short(value: string | undefined, fallback: string) { return value ? `${value.slice(0, 8)}…${value.slice(-6)}` : fallback; }

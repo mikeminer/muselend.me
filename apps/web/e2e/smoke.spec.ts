@@ -82,6 +82,9 @@ test("Italian locale covers public documentation and legal gates", async ({ page
   await expect(page.getByRole("heading", { level: 1, name: "Termini di utilizzo" })).toBeVisible();
   await page.goto("/status");
   await expect(page.getByRole("heading", { level: 1, name: "Preparazione testnet" })).toBeVisible();
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { level: 1, name: "Amministrazione del protocollo" })).toBeVisible();
+  await expect(page.getByText(/console resta fail-closed/i)).toBeVisible();
 });
 
 for (const route of [
