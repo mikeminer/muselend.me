@@ -264,4 +264,21 @@ contract MuseLendProtocolTest is Test {
         senior.withdraw(1e6, lender, lender);
         assertEq(usdc.balanceOf(lender), before + 1e6);
     }
+
+    function testSettlementPendingPreservesDebtAndAllowsLaterClose() public {
+        uint256 id = open();
+        vm.prank(borrower);
+        manager.markSettlementPending(id);
+        (,,,,,,,,,,,,,,,, MuseLendPositionManager.State pendingState) = manager.positions(id);
+        assertEq(uint256(pendingState), uint256(MuseLendPositionManager.State.SettlementPending));
+        assertGt(manager.currentDebt(id), 0);
+
+        usdc.mint(borrower, 100e6);
+        vm.startPrank(borrower);
+        usdc.approve(address(manager), type(uint256).max);
+        manager.closeFull(id, 0, block.timestamp + 1 hours, route);
+        vm.stopPrank();
+        (,,,,,,,,,,,,,,,, MuseLendPositionManager.State closedState) = manager.positions(id);
+        assertEq(uint256(closedState), uint256(MuseLendPositionManager.State.Closed));
+    }
 }

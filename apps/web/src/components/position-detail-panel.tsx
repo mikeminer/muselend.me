@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PositionTuple = readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, number, number, number, number, bigint, number];
 const erc20Abi = parseAbi(["function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]);
-const states = ["Open", "Settling", "Closed", "Defaulted"];
+const states = ["None", "Open", "Settling", "Closed", "Defaulted", "Settlement pending"];
 
 export function PositionDetailPanel({ id }: { id: bigint }) {
   const { address, chainId, isConnected } = useAccount();
@@ -40,6 +40,7 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
   function approve() { if (usdc && manager) transaction.writeContract({ address: usdc, abi: erc20Abi, functionName: "approve", args: [manager, maxUint256] }); }
   function repay() { if (manager) transaction.writeContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "repay", args: [id] }); }
   function settle() { if (manager) transaction.writeContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "settleExpiredPosition", args: [id] }); }
+  function markPending() { if (manager) transaction.writeContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "markSettlementPending", args: [id] }); }
 
   if (!deploymentConfigured) return <Alert><AlertTitle>Contracts not configured</AlertTitle><AlertDescription>No position data or transaction is enabled without verified Base Sepolia addresses.</AlertDescription></Alert>;
   if (!isConnected) return <Alert><AlertTitle>Connect your wallet</AlertTitle><AlertDescription>The position is loaded directly from the connected network.</AlertDescription></Alert>;
@@ -62,10 +63,11 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
       <Metric label="Epoch" value={position[14].toString()} />
     </CardContent></Card>
     <Card><CardHeader><CardTitle>Available actions</CardTitle></CardHeader><CardContent className="space-y-3">
-      {state === "Open" && ownsPosition && debt > 0n ? allowance < debt
+      {(state === "Open" || state === "Settlement pending") && ownsPosition && debt > 0n ? allowance < debt
         ? <Button className="w-full" onClick={approve} disabled={busy}>{busy ? "Confirming…" : `Approve ${money(debt)}`}</Button>
         : <Button className="w-full" onClick={repay} disabled={busy}>{busy ? "Confirming…" : `Repay ${money(debt)}`}</Button> : null}
-      {state === "Open" && expired ? <Button className="w-full" variant="destructive" onClick={settle} disabled={busy}>{busy ? "Confirming…" : "Settle expired position"}</Button> : null}
+      {(state === "Open" || state === "Settlement pending") && expired ? <Button className="w-full" variant="destructive" onClick={settle} disabled={busy}>{busy ? "Confirming…" : "Settle expired position"}</Button> : null}
+      {state === "Open" && ownsPosition ? <Button className="w-full" variant="outline" onClick={markPending} disabled={busy}>{busy ? "Confirming…" : "Mark settlement pending"}</Button> : null}
       <p className="text-sm text-muted-foreground">Full and capped buyback actions require a fresh verified swap quote and remain unavailable until the quote adapter is configured.</p>
       {transaction.error ? <p className="text-sm text-destructive">{transaction.error.message}</p> : null}
       {receipt.isSuccess ? <p className="text-sm text-emerald-300">Transaction confirmed on Base Sepolia.</p> : null}

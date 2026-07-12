@@ -120,12 +120,19 @@ The protocol executes exact-input using no more than `K`, returns the actual cre
 tokens received (which may be less than `q`), releases unused coverage, and closes the
 receipt. No cash payout is derived from a spot oracle.
 
+### No authorized liquidity route
+
+If no allowlisted adapter can provide a verified quote, the owner may mark the position
+`SettlementPending`. This is an explicit operational status only: reserve isolation, debt
+accrual, repayment, later full/capped close and permissionless expiry settlement continue
+unchanged. Governance may add an adapter only through its configured timelock.
+
 ### Expiry/default
 
 After maturity plus grace, permissionless settlement pays in this order:
 
-1. bounded keeper bounty;
-2. senior debt from `S`, with senior priority;
+1. senior debt from `S`, with absolute priority;
+2. bounded keeper bounty from the residual;
 3. explicitly capped protocol fees, if permitted by the senior invariant;
 4. residual `S - seniorPayment - bounty - fees` to the junior epoch.
 

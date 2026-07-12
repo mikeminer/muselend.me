@@ -32,7 +32,8 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         Open,
         Settling,
         Closed,
-        Defaulted
+        Defaulted,
+        SettlementPending
     }
 
     struct Position {
@@ -106,6 +107,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint256 originationFee
     );
     event PositionRepaid(uint256 indexed positionId, uint256 amount);
+    event PositionSettlementPending(uint256 indexed positionId);
     event PositionClosed(
         uint256 indexed positionId, uint256 creatorTokensReturned, uint256 buybackCost, uint256 topUp
     );
@@ -255,9 +257,19 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
 
     function currentDebt(uint256 id) public view returns (uint256) {
         Position storage p = positions[id];
-        if (p.state != State.Open) revert InvalidPosition();
+        if (!_isActive(p.state)) revert InvalidPosition();
         if (p.debtShares == 0) return 0;
         return Math.min(seniorVault.debtForShares(p.debtShares), p.maxDebt);
+    }
+
+    /// @notice Records that no currently authorized route can settle the position.
+    /// @dev This does not alter reserves, debt, expiry settlement, or the ability to retry a close.
+    function markSettlementPending(uint256 id) external {
+        Position storage p = positions[id];
+        if (p.owner != msg.sender) revert NotPositionOwner();
+        if (p.state != State.Open) revert InvalidPosition();
+        p.state = State.SettlementPending;
+        emit PositionSettlementPending(id);
     }
 
     function repay(uint256 id) external nonReentrant returns (uint256 amount) {
@@ -349,7 +361,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
     // slither-disable-start reentrancy-no-eth
     function settleExpiredPosition(uint256 id) external nonReentrant {
         Position storage p = positions[id];
-        if (p.state != State.Open) revert InvalidPosition();
+        if (!_isActive(p.state)) revert InvalidPosition();
         if (block.timestamp <= uint256(p.maturity) + GRACE_PERIOD) revert PositionNotExpired();
         uint256 debt = currentDebt(id);
         if (debt > p.saleProceeds) revert CoverageViolation();
@@ -379,9 +391,13 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         internal
         view
     {
-        if (p.state != State.Open || !allowedAdapter[p.adapter] || block.timestamp > deadline) {
+        if (!_isActive(p.state) || !allowedAdapter[p.adapter] || block.timestamp > deadline) {
             revert InvalidPosition();
         }
         if (route.creatorToken != p.creatorToken || route.usdc != address(usdc)) revert InvalidAdapter();
+    }
+
+    function _isActive(State state) internal pure returns (bool) {
+        return state == State.Open || state == State.SettlementPending;
     }
 }

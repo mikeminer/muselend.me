@@ -15,7 +15,7 @@ type PositionTuple = readonly [
   number, number, number, number, bigint, number,
 ];
 
-const states = ["Open", "Settling", "Closed", "Defaulted"];
+const states = ["None", "Open", "Settling", "Closed", "Defaulted", "Settlement pending"];
 
 export function PositionsPanel() {
   const { address, chainId, isConnected } = useAccount();
