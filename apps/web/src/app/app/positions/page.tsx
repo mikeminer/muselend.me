@@ -2,8 +2,10 @@ import { PageHeading } from "@/components/page-heading";
 import { PositionsPanel } from "@/components/positions-panel";
 
 export default function PositionsPage() {
+  const t = useTranslations("AppPages");
   return <>
-    <PageHeading eyebrow="Positions" title="Capped synthetic positions" description="Inspect debt, maturity, reserve, junior coverage and currently available settlement routes." />
+    <PageHeading eyebrow={t("positionsEyebrow")} title={t("positionsTitle")} description={t("positionsDescription")} />
     <PositionsPanel />
   </>;
 }
+import { useTranslations } from "next-intl";

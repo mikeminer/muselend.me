@@ -2,14 +2,16 @@ import { PageHeading } from "@/components/page-heading";
 import { SeniorVaultPanel } from "@/components/senior-vault-panel";
 
 export default function LendPage() {
+  const t = useTranslations("AppPages");
   return (
     <>
       <PageHeading
-        eyebrow="Senior vault"
-        title="Supply native USDC"
-        description="ERC-4626 shares accrue realized borrower interest. Withdrawals depend on available cash; queued claims are not instantly liquid."
+        eyebrow={t("lendEyebrow")}
+        title={t("lendTitle")}
+        description={t("lendDescription")}
       />
       <SeniorVaultPanel />
     </>
   );
 }
+import { useTranslations } from "next-intl";

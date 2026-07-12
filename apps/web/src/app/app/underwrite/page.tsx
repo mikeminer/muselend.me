@@ -2,14 +2,16 @@ import { HedgeEpochPanel } from "@/components/hedge-epoch-panel";
 import { PageHeading } from "@/components/page-heading";
 
 export default function UnderwritePage() {
+  const t = useTranslations("AppPages");
   return (
     <>
       <PageHeading
-        eyebrow="Junior hedge"
-        title="Underwrite a fixed epoch"
-        description="Capital is locked while positions remain exposed. Premium and downside PnL come with the risk of losing capital when creator tokens rise."
+        eyebrow={t("underwriteEyebrow")}
+        title={t("underwriteTitle")}
+        description={t("underwriteDescription")}
       />
       <HedgeEpochPanel />
     </>
   );
 }
+import { useTranslations } from "next-intl";

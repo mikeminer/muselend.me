@@ -2,6 +2,7 @@
 
 import { MuseLendHedgeEpochVaultAbi, MuseLendPositionManagerAbi, MuseLendUSDCVaultAbi } from "@muselend/abis";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { formatUnits } from "viem";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { EmptyState } from "@/components/empty-state";
@@ -20,6 +21,7 @@ const positionWindow = 50n;
 const epochWindow = 5n;
 
 export function PortfolioOverview() {
+  const t = useTranslations("Portfolio");
   const { address, chainId, isConnected } = useAccount();
   const manager = contracts.positionManager;
   const senior = contracts.seniorVault;
@@ -43,11 +45,11 @@ export function PortfolioOverview() {
     query: { enabled },
   });
 
-  if (!deploymentConfigured) return <EmptyState title="Contracts not configured" text="Verified Base Sepolia addresses must be published before the portfolio can be loaded." />;
-  if (!isConnected) return <EmptyState title="Connect your wallet" text="Your portfolio is assembled from verified Base Sepolia contracts without custody or off-chain balances." />;
-  if (chainId !== 84532) return <EmptyState title="Switch to Base Sepolia" text="MuseLend testnet portfolio data is available on chain 84532." />;
-  if (nextPosition.isLoading || nextEpoch.isLoading || seniorSharesRead.isLoading || positionReads.isLoading || epochReads.isLoading) return <p className="text-sm text-muted-foreground" role="status">Loading portfolio from Base Sepolia…</p>;
-  if (nextPosition.isError || nextEpoch.isError || seniorSharesRead.isError || positionReads.isError || epochReads.isError) return <EmptyState title="Portfolio temporarily unavailable" text="The verified Base Sepolia RPC did not return a complete portfolio. Retry after the connection recovers." />;
+  if (!deploymentConfigured) return <EmptyState title={t("contractsTitle")} text={t("contractsText")} />;
+  if (!isConnected) return <EmptyState title={t("connectTitle")} text={t("connectText")} />;
+  if (chainId !== 84532) return <EmptyState title={t("networkTitle")} text={t("networkText")} />;
+  if (nextPosition.isLoading || nextEpoch.isLoading || seniorSharesRead.isLoading || positionReads.isLoading || epochReads.isLoading) return <p className="text-sm text-muted-foreground" role="status">{t("loading")}</p>;
+  if (nextPosition.isError || nextEpoch.isError || seniorSharesRead.isError || positionReads.isError || epochReads.isError) return <EmptyState title={t("errorTitle")} text={t("errorText")} />;
 
   const seniorShares = typeof seniorSharesRead.data === "bigint" ? seniorSharesRead.data : 0n;
   const owned = (positionReads.data ?? []).flatMap((result, index) => {
@@ -62,19 +64,19 @@ export function PortfolioOverview() {
 
   return <div className="space-y-8">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <MetricCard label="Active positions" value={active.length.toLocaleString()} detail={`Newest ${positionWindow} protocol positions scanned`} />
-      <MetricCard label="Originated principal" value={usdc(principal)} detail="Across your active positions" />
-      <MetricCard label="Senior shares" value={units(seniorShares)} detail="ERC-4626 vault balance" />
-      <MetricCard label="Junior shares" value={units(juniorShares)} detail={`Across the latest ${epochWindow} epochs`} />
+      <MetricCard label={t("activePositions")} value={active.length.toLocaleString()} detail={t("activeDetail", { count: Number(positionWindow) })} />
+      <MetricCard label={t("principal")} value={usdc(principal)} detail={t("principalDetail")} />
+      <MetricCard label={t("seniorShares")} value={units(seniorShares)} detail={t("seniorDetail")} />
+      <MetricCard label={t("juniorShares")} value={units(juniorShares)} detail={t("juniorDetail", { count: Number(epochWindow) })} />
     </div>
-    {owned.length === 0 && seniorShares === 0n && juniorShares === 0n ? <EmptyState title="No on-chain activity yet" text="Open a capped position or allocate Base Sepolia USDC to a MuseLend vault." /> : null}
+    {owned.length === 0 && seniorShares === 0n && juniorShares === 0n ? <EmptyState title={t("emptyTitle")} text={t("emptyText")} /> : null}
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-4"><CardTitle>Recent positions</CardTitle><Button asChild variant="outline"><Link href="/app/positions">View all</Link></Button></CardHeader>
+      <CardHeader className="flex-row items-center justify-between gap-4"><CardTitle>{t("recent")}</CardTitle><Button asChild variant="outline"><Link href="/app/positions">{t("viewAll")}</Link></Button></CardHeader>
       <CardContent>
-        {recent.length === 0 ? <p className="text-sm text-muted-foreground">No owned positions in the latest protocol window.</p> : <ul className="divide-y">{recent.map(({ id, position }) => <li key={id.toString()}><Link href={`/app/positions/${id}`} className="flex items-center justify-between gap-4 py-3 text-sm hover:text-primary"><span className="font-mono">Position #{id.toString()}</span><span>{usdc(position[5])} · {stateName(position[16])}</span></Link></li>)}</ul>}
+        {recent.length === 0 ? <p className="text-sm text-muted-foreground">{t("noRecent")}</p> : <ul className="divide-y">{recent.map(({ id, position }) => <li key={id.toString()}><Link href={`/app/positions/${id}`} className="flex items-center justify-between gap-4 py-3 text-sm hover:text-primary"><span className="font-mono">{t("position", { id: id.toString() })}</span><span>{usdc(position[5])} · {t(stateKey(position[16]))}</span></Link></li>)}</ul>}
       </CardContent>
     </Card>
-    <div className="flex flex-wrap gap-3"><Button asChild><Link href="/app/borrow">Review a borrow quote</Link></Button><Button asChild variant="outline"><Link href="/app/lend">Manage senior vault</Link></Button><Button asChild variant="outline"><Link href="/app/underwrite">Manage hedge epochs</Link></Button></div>
+    <div className="flex flex-wrap gap-3"><Button asChild><Link href="/app/borrow">{t("quote")}</Link></Button><Button asChild variant="outline"><Link href="/app/lend">{t("seniorAction")}</Link></Button><Button asChild variant="outline"><Link href="/app/underwrite">{t("juniorAction")}</Link></Button></div>
   </div>;
 }
 
@@ -82,4 +84,4 @@ function range(first: bigint, exclusiveEnd: bigint) { return Array.from({ length
 function readBigInt(result: { status: string; result?: unknown } | undefined) { return result?.status === "success" && typeof result.result === "bigint" ? result.result : 0n; }
 function units(value: bigint) { return Number(formatUnits(value, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
 function usdc(value: bigint) { return `${units(value)} USDC`; }
-function stateName(state: number) { return ["None", "Open", "Settling", "Closed", "Defaulted", "Settlement pending"][state] ?? "Unknown"; }
+function stateKey(state: number) { return (["stateNone", "stateOpen", "stateSettling", "stateClosed", "stateDefaulted", "statePending"] as const)[state] ?? "stateUnknown"; }
