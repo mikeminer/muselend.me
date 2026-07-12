@@ -8,36 +8,41 @@ explicit owner gates.
 
 - [x] Confirm `muselend.me` is already owner-controlled; do not purchase it.
 - [x] Establish brand assets and PWA icons.
-- [ ] Pin the monorepo toolchain and dependencies.
-- [ ] Add CI, secret scanning, dependency updates, and repository policy files.
+- [x] Pin the monorepo toolchain and dependencies.
+- [x] Add CI, secret scanning, dependency updates, and repository policy files.
 
 ## Phase 1 — protocol specification and models
 
 - [x] Write the initial accounting specification.
-- [ ] Write architecture, threat model, admin powers, and chain-address provenance.
-- [ ] Implement the TypeScript risk/accounting model and differential vectors.
-- [ ] Produce stress simulations and document assumptions.
+- [x] Write architecture, threat model, admin powers, and chain-address provenance.
+- [x] Implement the TypeScript risk/accounting model and differential vectors.
+- [x] Produce stress simulations and document assumptions.
 
 ## Phase 2 — contracts
 
-- [ ] Install a pinned Foundry toolchain (not currently present on this machine).
-- [ ] Implement rate model, risk manager, senior vault, hedge epoch vault, receipt,
+- [x] Install and pin Foundry 1.7.1 and Solidity 0.8.35.
+- [x] Implement rate model, risk manager, senior vault, hedge epoch vault, receipt,
   position manager, typed adapters, validator, treasury, mocks, and withdrawal queue.
-- [ ] Add unit, fuzz, invariant, differential, fork, and static-analysis suites.
-- [ ] Export deterministic ABIs and deployment configuration.
+- [x] Add unit, fuzz, invariant, differential, local-chain E2E, and static-analysis suites.
+- [ ] Add canonical infrastructure fork tests when a pinned archival RPC is available.
+- [x] Export deterministic ABIs and deployment configuration.
 
 ## Phase 3 — product
 
-- [ ] Build the Next.js App Router web application and bilingual content system.
-- [ ] Implement public, borrower, lender, underwriter, markets, position, docs, risk,
-  legal, status, and gated admin surfaces.
-- [ ] Add wallet connectivity, transaction simulation/lifecycle, direct-chain fallback,
-  APIs, indexer, schema, rate limiting, security headers, and observability.
-- [ ] Add unit, component, accessibility, browser, and local-chain E2E coverage.
+- [x] Build the Next.js App Router web application and bilingual content system.
+- [x] Implement public, borrower, lender, underwriter, markets, position, docs, risk,
+  legal, and status surfaces.
+- [ ] Connect the admin console to deployed role checks and timelock transaction simulations.
+- [x] Add wallet connectivity, transaction lifecycle, direct-chain fallback, APIs,
+  indexer/schema foundations, rate limiting, and security headers.
+- [ ] Connect production persistence, distributed rate limiting, and observability after
+  the owner provisions the required Vercel/Neon/Upstash resources.
+- [x] Add unit, accessibility, browser, and local-chain E2E coverage.
 
 ## Phase 4 — delivery
 
-- [ ] Pass clean install, lint, typecheck, builds, tests, invariants, Slither, and E2E.
+- [x] Pass clean install, lint, typecheck, builds, 34 Foundry tests, invariants,
+  Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
 - [ ] Deploy and verify contracts on Base Sepolia only after a funded testnet signer is
   available and the owner approves signing transactions.
 - [ ] Configure Vercel testnet mode, preview, production, and then connect the already
