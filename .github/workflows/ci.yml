@@ -21,6 +21,8 @@ jobs:
       - run: pnpm test --filter='!@muselend/contracts'
       - run: pnpm build --filter='!@muselend/contracts'
       - run: pnpm audit --audit-level high
+      - run: pnpm --filter @muselend/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @muselend/web test:e2e
   contracts:
     runs-on: ubuntu-latest
     steps:
@@ -39,3 +41,6 @@ jobs:
       - working-directory: packages/contracts
         env: { FOUNDRY_PROFILE: ci }
         run: forge test
+      - run: pipx install slither-analyzer==0.11.5
+      - working-directory: packages/contracts
+        run: slither . --foundry-out-directory out --filter-paths "lib" --fail-high

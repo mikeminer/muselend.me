@@ -7,11 +7,14 @@ import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title Fixed-epoch junior hedge vault
 /// @notice Epoch shares are non-transferable and redeemable only after every liability settles.
 contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
+    using SafeCast for int256;
     bytes32 public constant EPOCH_ADMIN_ROLE = keccak256("EPOCH_ADMIN_ROLE");
     error InvalidEpoch();
     error EpochNotOpen();
@@ -38,6 +41,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
     uint256 public nextEpochId = 1;
     mapping(uint256 => Epoch) public epochs;
     mapping(uint256 => uint256) public totalShares;
+    uint256 public totalLockedCoverage;
     event EpochCreated(
         uint256 indexed epochId,
         uint40 depositStart,
@@ -94,7 +98,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
         }
         shares = totalShares[id] == 0 ? assets : Math.mulDiv(assets, totalShares[id], e.depositedCapital);
         if (shares == 0) revert InvalidEpoch();
-        e.depositedCapital += uint128(assets);
+        e.depositedCapital += assets.toUint128();
         totalShares[id] += shares;
         usdc.safeTransferFrom(msg.sender, address(this), assets);
         _mint(receiver, id, shares, "");
@@ -118,7 +122,8 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
             revert InvalidEpoch();
         }
         if (amount > availableCoverage(id)) revert CoverageUnavailable();
-        e.lockedCoverage += uint128(amount);
+        e.lockedCoverage += amount.toUint128();
+        totalLockedCoverage += amount;
         e.openPositions++;
         emit CoverageLocked(id, positionId, amount);
     }
@@ -127,7 +132,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
     function recordPremium(uint256 id, uint256 positionId, uint256 amount) external onlyManager {
         Epoch storage e = epochs[id];
         if (e.closed || amount > type(uint128).max) revert InvalidEpoch();
-        e.premium += uint128(amount);
+        e.premium += amount.toUint128();
         emit PremiumRecorded(id, positionId, amount);
     }
 
@@ -149,11 +154,12 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
         if (locked > e.lockedCoverage || e.openPositions == 0 || juniorSpent > locked) {
             revert CoverageUnavailable();
         }
-        e.lockedCoverage -= uint128(locked);
+        e.lockedCoverage -= locked.toUint128();
+        totalLockedCoverage -= locked;
         e.openPositions--;
         if (premium != 0) revert InvalidEpoch();
-        e.realizedPnl += int128(pnl) - int128(int256(juniorSpent));
-        emit CoverageReleased(id, positionId, locked, pnl - int256(juniorSpent));
+        e.realizedPnl += pnl.toInt128() - juniorSpent.toInt256().toInt128();
+        emit CoverageReleased(id, positionId, locked, pnl - juniorSpent.toInt256());
     }
 
     function closeEpoch(uint256 id) external {
@@ -174,7 +180,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
             : uint256(e.depositedCapital) + e.premium + uint256(int256(e.realizedPnl));
         assets = Math.mulDiv(shares, nav, totalShares[id]);
         totalShares[id] -= shares;
-        e.depositedCapital = uint128(nav - assets);
+        e.depositedCapital = (nav - assets).toUint128();
         _burn(msg.sender, id, shares);
         usdc.safeTransfer(receiver, assets);
     }

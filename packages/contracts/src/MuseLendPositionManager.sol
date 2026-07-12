@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { MuseLendUSDCVault } from "./MuseLendUSDCVault.sol";
 import { MuseLendHedgeEpochVault } from "./MuseLendHedgeEpochVault.sol";
 import { MuseLendPositionReceipt } from "./MuseLendPositionReceipt.sol";
@@ -17,6 +18,7 @@ import { ISwapAdapter } from "./interfaces/ISwapAdapter.sol";
 /// @notice Atomically sells canonical creator tokens before originating covered USDC debt.
 contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
     bytes32 public constant ADAPTER_ADMIN_ROLE = keccak256("ADAPTER_ADMIN_ROLE");
     uint256 public constant BPS = 10_000;
     uint256 public constant RAY = 1e27;
@@ -28,6 +30,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
     enum State {
         None,
         Open,
+        Settling,
         Closed,
         Defaulted
     }
@@ -132,6 +135,8 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         emit AdapterUpdated(adapter, allowed);
     }
 
+    // Balance deltas authenticate adapter return values; nonReentrant guards the full transaction.
+    // slither-disable-start reentrancy-balance,reentrancy-no-eth,reentrancy-benign
     function openPosition(OpenParams calldata p) external nonReentrant returns (uint256 id) {
         if (riskManager.openingsPaused()) revert RiskPaused();
         if (!allowedAdapter[p.adapter]) revert InvalidAdapter();
@@ -151,8 +156,10 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         if (token.balanceOf(address(this)) - tokenBefore != p.amount) revert InvalidToken();
         token.forceApprove(p.adapter, p.amount);
         uint256 beforeUsdc = usdc.balanceOf(address(this));
-        ISwapAdapter(p.adapter).sellExactInput(p.route, p.amount, p.minUsdcOut, p.deadline);
+        uint256 adapterProceeds =
+            ISwapAdapter(p.adapter).sellExactInput(p.route, p.amount, p.minUsdcOut, p.deadline);
         uint256 proceeds = usdc.balanceOf(address(this)) - beforeUsdc;
+        if (adapterProceeds != proceeds) revert Slippage();
         if (proceeds > type(uint128).max) revert InvalidAmount();
         if (proceeds < p.minUsdcOut || proceeds < c.minimumPositionUsdc || proceeds > c.maximumPositionUsdc) {
             revert Slippage();
@@ -160,6 +167,10 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint256 cap = Math.mulDiv(proceeds, c.coverageCapBps, BPS);
         uint256 junior = cap - proceeds;
         if (p.principal > Math.mulDiv(proceeds, c.advanceRateBps, BPS)) revert CoverageViolation();
+        if (
+            seniorVault.totalPrincipalOutstanding() + p.principal > riskManager.globalSeniorDebtCap()
+                || hedgeVault.totalLockedCoverage() + junior > riskManager.globalJuniorCoverageCap()
+        ) revert CoverageViolation();
         uint256 duration = uint256(p.term) + GRACE_PERIOD;
         uint256 maxDebt = p.principal
             + Math.mulDiv(
@@ -192,18 +203,18 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
             msg.sender,
             p.creatorToken,
             p.adapter,
-            uint128(p.amount),
-            uint128(proceeds),
-            uint128(p.principal),
-            uint128(shares),
-            uint128(cap),
-            uint128(junior),
-            uint128(premium),
+            p.amount.toUint128(),
+            proceeds.toUint128(),
+            p.principal.toUint128(),
+            shares.toUint128(),
+            cap.toUint128(),
+            junior.toUint128(),
+            premium.toUint128(),
             uint40(block.timestamp),
             maturity,
             p.term,
             uint32(p.epochId),
-            uint128(maxDebt),
+            maxDebt.toUint128(),
             State.Open
         );
         totalReservedUsdc += proceeds;
@@ -214,6 +225,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
             id, msg.sender, p.creatorToken, p.amount, proceeds, p.principal, cap, junior, premium
         );
     }
+    // slither-disable-end reentrancy-balance,reentrancy-no-eth,reentrancy-benign
 
     function currentDebt(uint256 id) public view returns (uint256) {
         Position storage p = positions[id];
@@ -230,13 +242,16 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
 
     function _repay(Position storage p, uint256 id, address payer) internal returns (uint256 amount) {
         if (p.debtShares == 0) return 0;
-        amount = Math.min(seniorVault.debtForShares(p.debtShares), p.maxDebt);
-        usdc.safeTransferFrom(payer, address(seniorVault), amount);
-        seniorVault.recordRepayment(id, p.debtShares, p.principal, amount);
+        uint256 debtShares = p.debtShares;
         p.debtShares = 0;
+        amount = Math.min(seniorVault.debtForShares(debtShares), p.maxDebt);
+        usdc.safeTransferFrom(payer, address(seniorVault), amount);
+        seniorVault.recordRepayment(id, debtShares, p.principal, amount);
         emit PositionRepaid(id, amount);
     }
 
+    // State enters Settling before the adapter call and nonReentrant prevents callback entry.
+    // slither-disable-start reentrancy-balance,reentrancy-no-eth
     function closeFull(uint256 id, uint256 maxTopUp, uint256 deadline, ISwapAdapter.Route calldata route)
         external
         nonReentrant
@@ -245,6 +260,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         Position storage p = positions[id];
         if (p.owner != msg.sender) revert NotPositionOwner();
         _validateCloseRoute(p, route, deadline);
+        p.state = State.Settling;
         _repay(p, id, msg.sender);
         if (maxTopUp > 0) usdc.safeTransferFrom(msg.sender, address(this), maxTopUp);
         hedgeVault.drawCoverage(p.epochId, p.juniorCoverage, address(this));
@@ -252,10 +268,11 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         usdc.forceApprove(p.adapter, budget);
         uint256 beforeUsdc = usdc.balanceOf(address(this));
         uint256 beforeToken = IERC20(p.creatorToken).balanceOf(address(this));
-        ISwapAdapter(p.adapter).buyExactOutput(route, p.syntheticAmount, budget, deadline);
+        uint256 adapterCost =
+            ISwapAdapter(p.adapter).buyExactOutput(route, p.syntheticAmount, budget, deadline);
         cost = beforeUsdc - usdc.balanceOf(address(this));
         if (
-            cost > budget
+            adapterCost != cost || cost > budget
                 || IERC20(p.creatorToken).balanceOf(address(this)) - beforeToken != p.syntheticAmount
         ) {
             revert Slippage();
@@ -267,12 +284,16 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint256 pnl = uint256(p.saleProceeds) - reserveSpent;
         usdc.safeTransfer(address(hedgeVault), juniorReturn + pnl);
         if (maxTopUp > topUpSpent) usdc.safeTransfer(msg.sender, maxTopUp - topUpSpent);
-        hedgeVault.settleCoverage(p.epochId, id, p.juniorCoverage, juniorSpent, int256(pnl), 0);
+        hedgeVault.settleCoverage(p.epochId, id, p.juniorCoverage, juniorSpent, pnl.toInt256(), 0);
         IERC20(p.creatorToken).safeTransfer(msg.sender, p.syntheticAmount);
         _finalize(p, id, State.Closed);
         emit PositionClosed(id, p.syntheticAmount, cost, topUpSpent);
     }
 
+    // slither-disable-end reentrancy-balance,reentrancy-no-eth
+
+    // State enters Settling before the adapter call and nonReentrant prevents callback entry.
+    // slither-disable-start reentrancy-balance,reentrancy-no-eth
     function closeCapped(uint256 id, uint256 minTokenOut, uint256 deadline, ISwapAdapter.Route calldata route)
         external
         nonReentrant
@@ -281,25 +302,32 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         Position storage p = positions[id];
         if (p.owner != msg.sender) revert NotPositionOwner();
         _validateCloseRoute(p, route, deadline);
+        p.state = State.Settling;
         _repay(p, id, msg.sender);
         hedgeVault.drawCoverage(p.epochId, p.juniorCoverage, address(this));
         usdc.forceApprove(p.adapter, p.coverageCap);
         uint256 beforeToken = IERC20(p.creatorToken).balanceOf(address(this));
-        ISwapAdapter(p.adapter).buyExactInput(route, p.coverageCap, minTokenOut, deadline);
+        uint256 adapterTokenOut =
+            ISwapAdapter(p.adapter).buyExactInput(route, p.coverageCap, minTokenOut, deadline);
         tokenOut = IERC20(p.creatorToken).balanceOf(address(this)) - beforeToken;
-        if (tokenOut < minTokenOut) revert Slippage();
+        if (adapterTokenOut != tokenOut || tokenOut < minTokenOut) revert Slippage();
         hedgeVault.settleCoverage(p.epochId, id, p.juniorCoverage, p.juniorCoverage, 0, 0);
         IERC20(p.creatorToken).safeTransfer(msg.sender, tokenOut);
         _finalize(p, id, State.Closed);
         emit PositionClosed(id, tokenOut, p.coverageCap, 0);
     }
 
+    // slither-disable-end reentrancy-balance,reentrancy-no-eth
+
+    // nonReentrant and the Settling transition protect the effects around trusted vault calls.
+    // slither-disable-start reentrancy-no-eth
     function settleExpiredPosition(uint256 id) external nonReentrant {
         Position storage p = positions[id];
         if (p.state != State.Open) revert InvalidPosition();
         if (block.timestamp <= uint256(p.maturity) + GRACE_PERIOD) revert PositionNotExpired();
         uint256 debt = currentDebt(id);
         if (debt > p.saleProceeds) revert CoverageViolation();
+        p.state = State.Settling;
         usdc.safeTransfer(address(seniorVault), debt);
         seniorVault.recordRepayment(id, p.debtShares, p.principal, debt);
         uint256 residual = uint256(p.saleProceeds) - debt;
@@ -307,10 +335,11 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         if (bounty > 0) usdc.safeTransfer(msg.sender, bounty);
         uint256 pnl = residual - bounty;
         if (pnl > 0) usdc.safeTransfer(address(hedgeVault), pnl);
-        hedgeVault.settleCoverage(p.epochId, id, p.juniorCoverage, 0, int256(pnl), 0);
+        hedgeVault.settleCoverage(p.epochId, id, p.juniorCoverage, 0, pnl.toInt256(), 0);
         _finalize(p, id, State.Defaulted);
         emit PositionDefaulted(id, debt, bounty, pnl);
     }
+    // slither-disable-end reentrancy-no-eth
 
     function _finalize(Position storage p, uint256 id, State state) internal {
         totalReservedUsdc -= p.saleProceeds;

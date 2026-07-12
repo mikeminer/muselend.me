@@ -33,3 +33,6 @@ Thumbs.db
 *.log
 pnpm-debug.log*
 .gitnexus
+.certs/
+.venv/
+packages/contracts/slither-report.json

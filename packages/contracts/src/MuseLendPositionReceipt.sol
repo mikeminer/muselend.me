@@ -7,6 +7,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 contract MuseLendPositionReceipt is ERC721 {
     error OnlyPositionManager();
     error ReceiptNonTransferable();
+    event PositionManagerSet(address indexed positionManager);
 
     address public immutable initializer;
     address public positionManager;
@@ -22,6 +23,7 @@ contract MuseLendPositionReceipt is ERC721 {
             revert OnlyPositionManager();
         }
         positionManager = positionManager_;
+        emit PositionManagerSet(positionManager_);
     }
 
     modifier onlyPositionManager() {

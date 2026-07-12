@@ -8,12 +8,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { InterestRateModel } from "./InterestRateModel.sol";
 
 /// @title MuseLend senior USDC vault
 /// @notice ERC-4626 cash vault with debt-share accounting and no administrative asset sweep.
 contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
     bytes32 public constant MANAGER_ADMIN_ROLE = keccak256("MANAGER_ADMIN_ROLE");
     uint256 public constant RAY = 1e27;
     uint256 public constant YEAR = 365 days;
@@ -81,6 +83,8 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
         return IERC20(asset()).balanceOf(address(this));
     }
 
+    // Zero is the exact boundary for both elapsed time and the absence of debt shares.
+    // slither-disable-next-line incorrect-equality
     function previewBorrowIndex() public view returns (uint256) {
         uint256 elapsed = block.timestamp - lastAccrual;
         if (elapsed == 0 || totalDebtShares == 0) return borrowIndex;
@@ -152,7 +156,7 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
         }
         requestId = nextRequestId++;
         _transfer(msg.sender, address(this), shares);
-        withdrawalRequests[requestId] = WithdrawalRequest(msg.sender, receiver, uint128(shares), false);
+        withdrawalRequests[requestId] = WithdrawalRequest(msg.sender, receiver, shares.toUint128(), false);
         emit WithdrawalQueued(requestId, msg.sender, receiver, shares);
     }
 

@@ -41,7 +41,7 @@ contract MuseLendProtocolTest is Test {
         senior = new MuseLendUSDCVault(usdc, admin, rate);
         junior = new MuseLendHedgeEpochVault(usdc, admin);
         receipt = new MuseLendPositionReceipt(admin);
-        risk = new MuseLendRiskManager(admin, admin, admin, false);
+        risk = new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6);
         validator = new CreatorTokenValidator(admin);
         manager = new MuseLendPositionManager(usdc, senior, junior, receipt, risk, validator, admin);
         vm.startPrank(admin);
@@ -102,6 +102,26 @@ contract MuseLendProtocolTest is Test {
         return id;
     }
 
+    function openExpectCoverageViolation() internal {
+        vm.startPrank(borrower);
+        creator.approve(address(manager), type(uint256).max);
+        vm.expectRevert(MuseLendPositionManager.CoverageViolation.selector);
+        manager.openPosition(
+            MuseLendPositionManager.OpenParams(
+                address(creator),
+                address(adapter),
+                100e18,
+                999e6,
+                600e6,
+                7 days,
+                1,
+                block.timestamp + 1 hours,
+                route
+            )
+        );
+        vm.stopPrank();
+    }
+
     function testOpenUsesRealizedSaleBeforeLoan() public {
         uint256 id = open();
         (
@@ -119,6 +139,19 @@ contract MuseLendProtocolTest is Test {
         assertEq(manager.totalReservedUsdc(), 1000e6);
         assertEq(receipt.ownerOf(id), borrower);
         assertEq(senior.totalPrincipalOutstanding(), 600e6);
+        assertEq(junior.totalLockedCoverage(), 500e6);
+    }
+
+    function testGlobalSeniorDebtCapRejectsOrigination() public {
+        vm.prank(admin);
+        risk.setGlobalCaps(599e6, 500_000e6);
+        openExpectCoverageViolation();
+    }
+
+    function testGlobalJuniorCoverageCapRejectsOrigination() public {
+        vm.prank(admin);
+        risk.setGlobalCaps(1_000_000e6, 499e6);
+        openExpectCoverageViolation();
     }
 
     function testFullCloseUsesJuniorOnlyAboveSaleReserve() public {

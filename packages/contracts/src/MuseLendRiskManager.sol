@@ -32,21 +32,47 @@ contract MuseLendRiskManager is AccessControl {
     bool public openingsPaused;
     bool public depositsPaused;
     bool public immutable mainnetEnabled;
+    uint128 public globalSeniorDebtCap;
+    uint128 public globalJuniorCoverageCap;
     mapping(address token => TokenConfig) public tokenConfig;
     mapping(address token => mapping(uint32 term => uint16 premiumBps)) public premiumBpsByTerm;
 
     event TokenConfigUpdated(address indexed token, TokenConfig config);
     event TermUpdated(address indexed token, uint32 indexed term, uint16 premiumBps, bool allowed);
     event PauseUpdated(bool openingsPaused, bool depositsPaused);
+    event GlobalCapsUpdated(uint128 seniorDebtCap, uint128 juniorCoverageCap);
 
-    constructor(address admin, address riskAdmin, address pauseGuardian, bool mainnetEnabled_) {
-        if (admin == address(0) || riskAdmin == address(0) || pauseGuardian == address(0)) {
+    constructor(
+        address admin,
+        address riskAdmin,
+        address pauseGuardian,
+        bool mainnetEnabled_,
+        uint128 initialSeniorDebtCap,
+        uint128 initialJuniorCoverageCap
+    ) {
+        if (
+            admin == address(0) || riskAdmin == address(0) || pauseGuardian == address(0)
+                || initialSeniorDebtCap == 0 || initialJuniorCoverageCap == 0
+        ) {
             revert InvalidRiskConfiguration();
         }
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(RISK_ADMIN_ROLE, riskAdmin);
         _grantRole(PAUSE_GUARDIAN_ROLE, pauseGuardian);
         mainnetEnabled = mainnetEnabled_;
+        globalSeniorDebtCap = initialSeniorDebtCap;
+        globalJuniorCoverageCap = initialJuniorCoverageCap;
+    }
+
+    /// @notice Sets protocol-wide exposure limits. The role is assigned to the governance timelock.
+    function setGlobalCaps(uint128 seniorDebtCap, uint128 juniorCoverageCap)
+        external
+        onlyRole(RISK_ADMIN_ROLE)
+    {
+        if (seniorDebtCap == 0 || juniorCoverageCap == 0) revert InvalidRiskConfiguration();
+        globalSeniorDebtCap = seniorDebtCap;
+        globalJuniorCoverageCap = juniorCoverageCap;
+        emit GlobalCapsUpdated(seniorDebtCap, juniorCoverageCap);
     }
 
     function setTokenConfig(address token, TokenConfig calldata config_) external onlyRole(RISK_ADMIN_ROLE) {

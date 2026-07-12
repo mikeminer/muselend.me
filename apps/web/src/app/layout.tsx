@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import {NextIntlClientProvider} from "next-intl";
+import {getLocale} from "next-intl/server";
+import {Providers} from "@/components/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,14 +25,19 @@ export const metadata: Metadata = {
   openGraph: { title: "MuseLend", description: "Creator Token Lending on Base", url: "https://muselend.me", siteName: "MuseLend", type: "website" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale=await getLocale();
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
-      <body className="flex min-h-full flex-col antialiased">{children}</body>
+    <html
+      lang={locale}
+      data-scroll-behavior="smooth"
+      className={`${geistSans.variable} ${geistMono.variable} dark h-full`}
+    >
+      <body className="flex min-h-full flex-col antialiased"><NextIntlClientProvider><Providers>{children}</Providers></NextIntlClientProvider></body>
     </html>
   );
 }

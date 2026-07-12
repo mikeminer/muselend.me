@@ -10,7 +10,7 @@ contract MuseLendRiskManagerTest is Test {
     address token = makeAddr("token");
 
     function setUp() public {
-        risk = new MuseLendRiskManager(admin, admin, guardian, false);
+        risk = new MuseLendRiskManager(admin, admin, guardian, false, 1_000_000e6, 500_000e6);
     }
 
     function validConfig() internal pure returns (MuseLendRiskManager.TokenConfig memory) {
@@ -47,5 +47,19 @@ contract MuseLendRiskManagerTest is Test {
         vm.prank(admin);
         vm.expectRevert();
         risk.setTokenConfig(token, c);
+    }
+
+    function testGlobalCapsAreBoundedAndRoleProtected() public {
+        vm.prank(admin);
+        risk.setGlobalCaps(1_000_000e6, 500_000e6);
+        assertEq(risk.globalSeniorDebtCap(), 1_000_000e6);
+        assertEq(risk.globalJuniorCoverageCap(), 500_000e6);
+
+        vm.expectRevert();
+        risk.setGlobalCaps(1, 1);
+
+        vm.prank(admin);
+        vm.expectRevert(MuseLendRiskManager.InvalidRiskConfiguration.selector);
+        risk.setGlobalCaps(0, 1);
     }
 }
