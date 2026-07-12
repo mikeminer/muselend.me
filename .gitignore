@@ -32,3 +32,4 @@ Thumbs.db
 # logs
 *.log
 pnpm-debug.log*
+.gitnexus
