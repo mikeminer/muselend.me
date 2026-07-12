@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@muselend/abis": "workspace:*",
     "@neondatabase/serverless": "1.1.0",
     "@tanstack/react-query": "5.101.2",
     "@upstash/redis": "1.38.0",

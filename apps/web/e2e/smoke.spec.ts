@@ -33,7 +33,16 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText(/quantità inferiore di Creator Token/i)).toBeVisible();
 });
 
-for (const route of ["/", "/app/borrow", "/risk", "/terms", "/privacy", "/cookies"]) {
+for (const route of [
+  "/",
+  "/app/borrow",
+  "/app/lend",
+  "/app/underwrite",
+  "/risk",
+  "/terms",
+  "/privacy",
+  "/cookies",
+]) {
   test(`${route} has no automatically detectable WCAG A/AA violations`, async ({ page }) => {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
