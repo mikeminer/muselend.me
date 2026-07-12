@@ -96,7 +96,7 @@ test.describe("Anvil protocol lifecycle", () => {
 
     const usdc = await deploy("MockERC20", ["USD Coin", "USDC", 6]);
     const creator = await deploy("MockZoraCreatorToken", [usdc.address, "0x0000000000000000000000000000000000000001"]);
-    const adapter = await deploy("MockSwapAdapter", [parseUnits("10", 6)]);
+    const adapter = await deploy("MockSwapAdapter", [parseUnits("10", 6), admin]);
     const rate = await deploy("InterestRateModel", [
       {
         baseRateRay: 2n * 10n ** 25n,

@@ -50,7 +50,7 @@ contract DeployBaseSepolia is Script {
         executors[0] = address(0);
         d.timelock = new TimelockController(1 days, proposers, executors, address(0));
         d.creatorToken = new MockZoraCreatorToken(BASE_SEPOLIA_USDC, BASE_SEPOLIA_ZORA_V4_HOOK);
-        d.adapter = new MockSwapAdapter(10e6);
+        d.adapter = new MockSwapAdapter(10e6, address(d.timelock));
         d.rateModel = new InterestRateModel(
             InterestRateModel.Config(
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000

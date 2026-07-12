@@ -34,7 +34,7 @@ contract MuseLendProtocolTest is Test {
     function setUp() public {
         usdc = new MockERC20("USD Coin", "USDC", 6);
         creator = new MockZoraCreatorToken(address(usdc), makeAddr("zoraHook"));
-        adapter = new MockSwapAdapter(10e6);
+        adapter = new MockSwapAdapter(10e6, admin);
         rate = new InterestRateModel(
             InterestRateModel.Config(
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
@@ -167,8 +167,19 @@ contract MuseLendProtocolTest is Test {
         openExpectCoverageViolation();
     }
 
+    function testOnlyPriceAdminCanChangeMockSettlementPrice() public {
+        vm.startPrank(borrower);
+        vm.expectRevert(MockSwapAdapter.UnauthorizedPriceAdmin.selector);
+        adapter.setPrice(12e6);
+        vm.stopPrank();
+        vm.prank(admin);
+        adapter.setPrice(12e6);
+        assertEq(adapter.priceUsdcPerToken(), 12e6);
+    }
+
     function testFullCloseUsesJuniorOnlyAboveSaleReserve() public {
         uint256 id = open();
+        vm.prank(admin);
         adapter.setPrice(12e6);
         usdc.mint(borrower, 100e6);
         vm.startPrank(borrower);
@@ -187,6 +198,7 @@ contract MuseLendProtocolTest is Test {
 
     function testCappedSettlementReturnsPartialQuantity() public {
         uint256 id = open();
+        vm.prank(admin);
         adapter.setPrice(30e6);
         usdc.mint(borrower, 100e6);
         vm.startPrank(borrower);

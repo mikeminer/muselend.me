@@ -26,7 +26,7 @@ contract MuseLendInvariant is StdInvariant, Test {
         address admin = address(this);
         usdc = new MockERC20("USDC", "USDC", 6);
         creator = new MockZoraCreatorToken(address(usdc), makeAddr("zoraHook"));
-        MockSwapAdapter adapter = new MockSwapAdapter(10e6);
+        MockSwapAdapter adapter = new MockSwapAdapter(10e6, address(this));
         InterestRateModel rate = new InterestRateModel(
             InterestRateModel.Config(
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000

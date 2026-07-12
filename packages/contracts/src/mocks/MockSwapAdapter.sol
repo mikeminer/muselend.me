@@ -10,13 +10,18 @@ contract MockSwapAdapter is ISwapAdapter {
     using SafeERC20 for IERC20;
     error DeadlineExpired();
     error InvalidRoute();
+    error UnauthorizedPriceAdmin();
     uint256 public priceUsdcPerToken;
+    address public immutable priceAdmin;
 
-    constructor(uint256 price_) {
+    constructor(uint256 price_, address priceAdmin_) {
+        if (priceAdmin_ == address(0)) revert UnauthorizedPriceAdmin();
         priceUsdcPerToken = price_;
+        priceAdmin = priceAdmin_;
     }
 
     function setPrice(uint256 price_) external {
+        if (msg.sender != priceAdmin) revert UnauthorizedPriceAdmin();
         priceUsdcPerToken = price_;
     }
 
