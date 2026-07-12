@@ -2,6 +2,7 @@
 
 import { MuseLendPositionManagerAbi } from "@muselend/abis";
 import { formatUnits, maxUint256, parseAbi } from "viem";
+import { useTranslations } from "next-intl";
 import { useAccount, useBlock, useReadContracts, useWriteContract } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
 import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
@@ -15,9 +16,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PositionTuple = readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, number, number, number, number, bigint, number];
 const erc20Abi = parseAbi(["function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]);
-const states = ["None", "Open", "Settling", "Closed", "Defaulted", "Settlement pending"];
+const stateKeys = ["stateNone", "stateOpen", "stateSettling", "stateClosed", "stateDefaulted", "statePending"] as const;
 
 export function PositionDetailPanel({ id }: { id: bigint }) {
+  const t = useTranslations("PositionDetail");
   const { address, chainId, isConnected } = useAccount();
   const manager = contracts.positionManager;
   const usdc = contracts.usdc;
@@ -46,36 +48,38 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
   function settle() { if (manager) transaction.writeContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "settleExpiredPosition", args: [id] }); }
   function markPending() { if (manager) transaction.writeContract({ address: manager, abi: MuseLendPositionManagerAbi, functionName: "markSettlementPending", args: [id] }); }
 
-  if (!deploymentConfigured) return <Alert><AlertTitle>Contracts not configured</AlertTitle><AlertDescription>No position data or transaction is enabled without verified Base Sepolia addresses.</AlertDescription></Alert>;
-  if (!isConnected) return <Alert><AlertTitle>Connect your wallet</AlertTitle><AlertDescription>The position is loaded directly from the connected network.</AlertDescription></Alert>;
-  if (chainId !== 84532) return <Alert><AlertTitle>Wrong network</AlertTitle><AlertDescription>Switch to Base Sepolia to inspect this position.</AlertDescription></Alert>;
-  if (reads.isLoading) return <p className="text-sm text-muted-foreground">Loading on-chain position…</p>;
-  if (!position || position[0] === "0x0000000000000000000000000000000000000000") return <Alert><AlertTitle>Position not found</AlertTitle><AlertDescription>No PositionManager record exists for this identifier.</AlertDescription></Alert>;
+  if (!deploymentConfigured) return <Alert><AlertTitle>{t("contractsTitle")}</AlertTitle><AlertDescription>{t("contractsText")}</AlertDescription></Alert>;
+  if (!isConnected) return <Alert><AlertTitle>{t("connectTitle")}</AlertTitle><AlertDescription>{t("connectText")}</AlertDescription></Alert>;
+  if (chainId !== 84532) return <Alert><AlertTitle>{t("networkTitle")}</AlertTitle><AlertDescription>{t("networkText")}</AlertDescription></Alert>;
+  if (reads.isLoading) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
+  if (!position || position[0] === "0x0000000000000000000000000000000000000000") return <Alert><AlertTitle>{t("missingTitle")}</AlertTitle><AlertDescription>{t("missingText")}</AlertDescription></Alert>;
 
-  const state = states[position[16]] ?? "Unknown";
+  const stateCode = position[16];
+  const state = t(stateKeys[stateCode] ?? "stateUnknown");
+  const active = stateCode === 1 || stateCode === 5;
   return <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-    <Card><CardHeader className="flex-row items-center justify-between"><CardTitle>On-chain accounting</CardTitle><Badge variant="outline">{state}</Badge></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2">
-      <Metric label="Owner" value={short(position[0])} />
-      <Metric label="Creator token" value={short(position[1])} />
-      <Metric label="Synthetic amount" value={token(position[3])} />
-      <Metric label="Sale proceeds" value={money(position[4])} />
-      <Metric label="Principal" value={money(position[5])} />
-      <Metric label="Current debt" value={money(debt)} />
-      <Metric label="Coverage cap" value={money(position[7])} />
-      <Metric label="Junior coverage" value={money(position[8])} />
-      <Metric label="Maturity" value={new Date(position[12] * 1000).toLocaleString()} />
-      <Metric label="Epoch" value={position[14].toString()} />
+    <Card><CardHeader className="flex-row items-center justify-between"><CardTitle>{t("accounting")}</CardTitle><Badge variant="outline">{state}</Badge></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2">
+      <Metric label={t("owner")} value={short(position[0])} />
+      <Metric label={t("creatorToken")} value={short(position[1])} />
+      <Metric label={t("syntheticAmount")} value={token(position[3])} />
+      <Metric label={t("saleProceeds")} value={money(position[4])} />
+      <Metric label={t("principal")} value={money(position[5])} />
+      <Metric label={t("debt")} value={money(debt)} />
+      <Metric label={t("coverageCap")} value={money(position[7])} />
+      <Metric label={t("juniorCoverage")} value={money(position[8])} />
+      <Metric label={t("maturity")} value={new Date(position[12] * 1000).toLocaleString()} />
+      <Metric label={t("epoch")} value={position[14].toString()} />
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>Available actions</CardTitle></CardHeader><CardContent className="space-y-3">
-      {(state === "Open" || state === "Settlement pending") && ownsPosition && debt > 0n ? allowance < debt
-        ? <Button className="w-full" onClick={approve} disabled={busy}>{busy ? "Confirming…" : `Approve ${money(debt)}`}</Button>
-        : <Button className="w-full" onClick={repay} disabled={busy}>{busy ? "Confirming…" : `Repay ${money(debt)}`}</Button> : null}
-      {(state === "Open" || state === "Settlement pending") && expired ? <Button className="w-full" variant="destructive" onClick={settle} disabled={busy}>{busy ? "Confirming…" : "Settle expired position"}</Button> : null}
-      {state === "Open" && ownsPosition ? <Button className="w-full" variant="outline" onClick={markPending} disabled={busy}>{busy ? "Confirming…" : "Mark settlement pending"}</Button> : null}
-      <p className="text-sm text-muted-foreground">Full and capped buyback actions require a fresh verified swap quote and remain unavailable until the quote adapter is configured.</p>
-      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Position transaction" />
+    <Card><CardHeader><CardTitle>{t("actions")}</CardTitle></CardHeader><CardContent className="space-y-3">
+      {active && ownsPosition && debt > 0n ? allowance < debt
+        ? <Button className="w-full" onClick={approve} disabled={busy}>{busy ? t("confirming") : t("approve", { amount: money(debt) })}</Button>
+        : <Button className="w-full" onClick={repay} disabled={busy}>{busy ? t("confirming") : t("repay", { amount: money(debt) })}</Button> : null}
+      {active && expired ? <Button className="w-full" variant="destructive" onClick={settle} disabled={busy}>{busy ? t("confirming") : t("settle")}</Button> : null}
+      {stateCode === 1 && ownsPosition ? <Button className="w-full" variant="outline" onClick={markPending} disabled={busy}>{busy ? t("confirming") : t("markPending")}</Button> : null}
+      <p className="text-sm text-muted-foreground">{t("actionHelp")}</p>
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("transaction")} />
     </CardContent></Card>
-    {(state === "Open" || state === "Settlement pending") && ownsPosition ? <PositionSettlement id={id} creatorToken={position[1]} adapter={position[2]} syntheticAmount={position[3]} coverageCap={position[7]} debt={debt} allowance={allowance} enabled={enabled && !busy} /> : null}
+    {active && ownsPosition ? <PositionSettlement id={id} creatorToken={position[1]} adapter={position[2]} syntheticAmount={position[3]} coverageCap={position[7]} debt={debt} allowance={allowance} enabled={enabled && !busy} /> : null}
     <PositionHistory id={id} enabled={enabled} />
   </div>;
 }

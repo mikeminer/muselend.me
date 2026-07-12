@@ -2,6 +2,7 @@
 
 import { MuseLendPositionManagerAbi } from "@muselend/abis";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { formatUnits, maxUint256, parseAbi, parseUnits, type Address } from "viem";
 import { useAccount, useSimulateContract, useWriteContract } from "wagmi";
 import { buyQuoteResponse } from "@/lib/api-schemas";
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function PositionSettlement(props: Props) {
+  const t = useTranslations("Settlement");
   const { address } = useAccount();
   const [mode, setMode] = useState<"full" | "capped">("full");
   const [topUp, setTopUp] = useState("0");
@@ -64,11 +66,11 @@ export function PositionSettlement(props: Props) {
     try {
       const response = await fetch(`/api/quote/${nextMode === "full" ? "buy-exact-output" : "buy-exact-input"}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chainId: 84532, creatorToken: props.creatorToken, amount: (nextMode === "full" ? props.syntheticAmount : props.coverageCap).toString(), slippageBps: 100, deadline }) });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error("No verified settlement quote is available.");
+      if (!response.ok) throw new Error(t("quoteUnavailable"));
       const parsed = buyQuoteResponse.parse(body).quote;
-      if (parsed.adapter.toLowerCase() !== props.adapter.toLowerCase()) throw new Error("Quote adapter does not match this position.");
+      if (parsed.adapter.toLowerCase() !== props.adapter.toLowerCase()) throw new Error(t("adapterMismatch"));
       setQuote(parsed); setQuoteFresh(true);
-    } catch (error) { setQuoteError(error instanceof Error ? error.message : "Settlement quote failed safely."); }
+    } catch (error) { setQuoteError(error instanceof Error ? error.message : t("quoteFailed")); }
     finally { setLoading(false); }
   }
 
@@ -78,18 +80,18 @@ export function PositionSettlement(props: Props) {
     if (mode === "capped" && cappedSimulation.data?.request) transaction.writeContract(cappedSimulation.data.request);
   }
 
-  return <Card className="lg:col-span-2"><CardHeader><CardTitle>Close position</CardTitle></CardHeader><CardContent className="space-y-5">
-    <Tabs value={mode} onValueChange={(value) => { const next = value as "full" | "capped"; setMode(next); setQuote(undefined); setQuoteFresh(false); setQuoteError(undefined); }}><TabsList><TabsTrigger value="full">Full redemption</TabsTrigger><TabsTrigger value="capped">Capped settlement</TabsTrigger></TabsList>
-      <TabsContent value="full" className="space-y-4"><p className="text-sm text-muted-foreground">Buy exactly {formatToken(props.syntheticAmount)} tokens. The position covers up to {formatUsdc(props.coverageCap)}; you control the maximum additional USDC.</p><div className="space-y-2"><Label htmlFor="settlement-top-up">Maximum top-up</Label><Input id="settlement-top-up" inputMode="decimal" value={topUp} onChange={(event) => { setTopUp(event.target.value); setQuote(undefined); setQuoteFresh(false); }} /></div></TabsContent>
-      <TabsContent value="capped" className="space-y-4"><Alert><AlertTitle>Token return may be partial</AlertTitle><AlertDescription>The entire {formatUsdc(props.coverageCap)} cap is exchanged. You receive only the Creator Tokens obtainable above the protected minimum.</AlertDescription></Alert></TabsContent>
+  return <Card className="lg:col-span-2"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-5">
+    <Tabs value={mode} onValueChange={(value) => { const next = value as "full" | "capped"; setMode(next); setQuote(undefined); setQuoteFresh(false); setQuoteError(undefined); }}><TabsList><TabsTrigger value="full">{t("full")}</TabsTrigger><TabsTrigger value="capped">{t("capped")}</TabsTrigger></TabsList>
+      <TabsContent value="full" className="space-y-4"><p className="text-sm text-muted-foreground">{t("fullText", { amount: formatToken(props.syntheticAmount), cap: formatUsdc(props.coverageCap) })}</p><div className="space-y-2"><Label htmlFor="settlement-top-up">{t("topUp")}</Label><Input id="settlement-top-up" inputMode="decimal" value={topUp} onChange={(event) => { setTopUp(event.target.value); setQuote(undefined); setQuoteFresh(false); }} /></div></TabsContent>
+      <TabsContent value="capped" className="space-y-4"><Alert><AlertTitle>{t("partialTitle")}</AlertTitle><AlertDescription>{t("partialText", { cap: formatUsdc(props.coverageCap) })}</AlertDescription></Alert></TabsContent>
     </Tabs>
-    <Button variant="outline" onClick={() => requestQuote()} disabled={!props.enabled || busy}>{loading ? "Requesting…" : "Request fresh quote"}</Button>
-    {quote ? <div className="grid gap-3 text-sm sm:grid-cols-3"><Metric label={mode === "full" ? "Protected max cost" : "Minimum token return"} value={mode === "full" ? formatUsdc(BigInt(quote.protectedAmount)) : formatToken(BigInt(quote.protectedAmount))} /><Metric label="Quote expiry" value={new Date(quote.deadline * 1000).toLocaleTimeString()} /><Metric label="Source" value="Verified testnet adapter" /></div> : null}
-    {mode === "full" && quote && topUpAtomic < requiredTopUp ? <p className="text-sm text-destructive">Maximum top-up must be at least {formatUsdc(requiredTopUp)} for this slippage-protected quote.</p> : null}
+    <Button variant="outline" onClick={() => requestQuote()} disabled={!props.enabled || busy}>{loading ? t("requesting") : t("requestQuote")}</Button>
+    {quote ? <div className="grid gap-3 text-sm sm:grid-cols-3"><Metric label={mode === "full" ? t("maxCost") : t("minimumReturn")} value={mode === "full" ? formatUsdc(BigInt(quote.protectedAmount)) : formatToken(BigInt(quote.protectedAmount))} /><Metric label={t("expiry")} value={new Date(quote.deadline * 1000).toLocaleTimeString()} /><Metric label={t("source")} value={t("verifiedAdapter")} /></div> : null}
+    {mode === "full" && quote && topUpAtomic < requiredTopUp ? <p className="text-sm text-destructive">{t("topUpMinimum", { amount: formatUsdc(requiredTopUp) })}</p> : null}
     {quoteError ? <p className="text-sm text-destructive">{quoteError}</p> : null}
-    {quote && props.allowance < requiredAllowance ? <Button onClick={approve} disabled={busy}>Approve debt and top-up USDC</Button> : <Button onClick={execute} disabled={busy || !(mode === "full" ? fullSimulation.data?.request : cappedSimulation.data?.request)}>Simulate and close</Button>}
-    {(fullSimulation.error || cappedSimulation.error) && quote ? <p className="text-sm text-destructive">Simulation failed. The transaction was not sent; refresh the quote and verify allowance and liquidity.</p> : null}
-    <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Settlement" />
+    {quote && props.allowance < requiredAllowance ? <Button onClick={approve} disabled={busy}>{t("approve")}</Button> : <Button onClick={execute} disabled={busy || !(mode === "full" ? fullSimulation.data?.request : cappedSimulation.data?.request)}>{t("close")}</Button>}
+    {(fullSimulation.error || cappedSimulation.error) && quote ? <p className="text-sm text-destructive">{t("simulationError")}</p> : null}
+    <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label={t("transaction")} />
   </CardContent></Card>;
 }
 

@@ -63,6 +63,9 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await page.goto("/app/positions");
   await expect(page.getByRole("heading", { level: 1, name: "Posizioni sintetiche con cap" })).toBeVisible();
   await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
+  await page.goto("/app/positions/1");
+  await expect(page.getByText("Posizione", { exact: true })).toBeVisible();
+  await expect(page.getByText(/dati e transazioni della posizione restano disabilitati/i)).toBeVisible();
 });
 
 for (const route of [
@@ -72,6 +75,7 @@ for (const route of [
   "/app/lend",
   "/app/underwrite",
   "/app/markets",
+  "/app/positions/1",
   "/admin",
   "/maintenance",
   "/risk",
