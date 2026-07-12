@@ -40,6 +40,8 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await page.goto("/");
   await page.getByRole("button", { name: /Italiano/i }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "it");
+  await expect(page.getByText("Un protocollo, tre ruoli", { exact: true })).toBeVisible();
+  await expect(page.getByText(/esposizione sintetica con cap per possessori/i)).toBeVisible();
   await page.goto("/app/borrow");
   await expect(page.locator("html")).toHaveAttribute("lang", "it");
   await expect(page.getByText(/sarà venduto all’apertura/i).first()).toBeVisible();
