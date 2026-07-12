@@ -29,6 +29,13 @@ test("health endpoint is explicit about the disabled mainnet", async ({ request 
   });
 });
 
+test("portfolio fails closed until verified contracts are configured", async ({ page }) => {
+  await page.goto("/app");
+  await expect(page.getByRole("heading", { level: 1, name: "Your MuseLend overview" })).toBeVisible();
+  await expect(page.getByText("Contracts not configured", { exact: true })).toBeVisible();
+  await expect(page.getByText(/verified Base Sepolia addresses/i)).toBeVisible();
+});
+
 test("Italian locale persists and translates critical borrower risks", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Italiano/i }).click();
@@ -42,6 +49,7 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
 
 for (const route of [
   "/",
+  "/app",
   "/app/borrow",
   "/app/lend",
   "/app/underwrite",
