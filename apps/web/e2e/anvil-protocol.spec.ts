@@ -54,7 +54,7 @@ test.describe("Anvil protocol lifecycle", () => {
     if (anvil && !anvil.killed) anvil.kill();
   });
 
-  test("senior, junior, borrower close, and permissionless default work end to end", async () => {
+  test("full and capped close, default, epoch redemption, and FIFO withdrawal work end to end", async () => {
     test.setTimeout(90_000);
     const publicClient = createPublicClient({ chain: anvilChain, transport: http(rpcUrl) });
     const testClient = createTestClient({ chain: anvilChain, mode: "anvil", transport: http(rpcUrl) });
@@ -214,16 +214,43 @@ test.describe("Anvil protocol lifecycle", () => {
 
     await write(adminWallet, adapter, "setPrice", [parseUnits("10", 6)]);
     await openPosition();
+    await write(adminWallet, adapter, "setPrice", [parseUnits("20", 6)]);
+    await write(borrowerWallet, manager, "closeCapped", [
+      2n,
+      parseUnits("75", 18),
+      Number((await publicClient.getBlock()).timestamp) + 3_600,
+      route,
+    ]);
+    expect(await publicClient.readContract({ address: creator.address, abi: creator.abi, functionName: "balanceOf", args: [borrower] })).toBe(parseUnits("975", 18));
+
+    await write(adminWallet, adapter, "setPrice", [parseUnits("10", 6)]);
+    await openPosition();
     await testClient.increaseTime({ seconds: 10 * 86_400 + 2 });
     await testClient.mine({ blocks: 1 });
-    await write(keeperWallet, manager, "settleExpiredPosition", [2n]);
+    await write(keeperWallet, manager, "settleExpiredPosition", [3n]);
     const position = (await publicClient.readContract({
       address: manager.address,
       abi: manager.abi,
       functionName: "positions",
-      args: [2n],
+      args: [3n],
     })) as readonly unknown[];
     expect(position.at(-1)).toBe(4);
+
+    await testClient.increaseTime({ seconds: 2 * 86_400 });
+    await testClient.mine({ blocks: 1 });
+    await write(keeperWallet, junior, "closeEpoch", [1n]);
+    const juniorShares = await publicClient.readContract({ address: junior.address, abi: junior.abi, functionName: "balanceOf", args: [underwriter, 1n] }) as bigint;
+    const juniorBefore = await publicClient.readContract({ address: usdc.address, abi: usdc.abi, functionName: "balanceOf", args: [underwriter] }) as bigint;
+    await write(underwriterWallet, junior, "redeem", [1n, juniorShares, underwriter]);
+    const juniorAfter = await publicClient.readContract({ address: usdc.address, abi: usdc.abi, functionName: "balanceOf", args: [underwriter] }) as bigint;
+    expect(juniorAfter).toBeGreaterThan(juniorBefore);
+
+    const queuedShares = parseUnits("1000", 6);
+    const lenderBefore = await publicClient.readContract({ address: usdc.address, abi: usdc.abi, functionName: "balanceOf", args: [lender] }) as bigint;
+    await write(lenderWallet, senior, "requestRedeem", [queuedShares, lender]);
+    await write(keeperWallet, senior, "claimNextWithdrawal");
+    const lenderAfter = await publicClient.readContract({ address: usdc.address, abi: usdc.abi, functionName: "balanceOf", args: [lender] }) as bigint;
+    expect(lenderAfter).toBeGreaterThan(lenderBefore);
   });
 });
 
