@@ -86,22 +86,30 @@ export const positionsCache = pgTable(
   ],
 );
 
-export const seniorPoolSnapshots = pgTable("senior_pool_snapshots", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  chainId: integer("chain_id").notNull(),
-  blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-  snapshot: jsonb("snapshot").notNull(),
-  createdAt,
-});
+export const seniorPoolSnapshots = pgTable(
+  "senior_pool_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    createdAt,
+  },
+  (table) => [uniqueIndex("senior_snapshot_chain_block_idx").on(table.chainId, table.blockNumber)],
+);
 
-export const hedgeEpochSnapshots = pgTable("hedge_epoch_snapshots", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  chainId: integer("chain_id").notNull(),
-  epochId: bigint("epoch_id", { mode: "bigint" }).notNull(),
-  blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-  snapshot: jsonb("snapshot").notNull(),
-  createdAt,
-});
+export const hedgeEpochSnapshots = pgTable(
+  "hedge_epoch_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    epochId: bigint("epoch_id", { mode: "bigint" }).notNull(),
+    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    createdAt,
+  },
+  (table) => [uniqueIndex("hedge_snapshot_chain_epoch_block_idx").on(table.chainId, table.epochId, table.blockNumber)],
+);
 
 export const quoteRequests = pgTable("quote_requests", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -156,6 +164,21 @@ export const notificationPreferences = pgTable("notification_preferences", {
   enabled: boolean("enabled").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const analyticsAggregates = pgTable(
+  "analytics_aggregates",
+  {
+    chainId: integer("chain_id").notNull(),
+    bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+    metric: text("metric").notNull(),
+    dimensionKey: text("dimension_key").notNull().default("global"),
+    value: bigint("value", { mode: "bigint" }).notNull(),
+    dimensions: jsonb("dimensions").notNull().default({}),
+    sourceBlock: bigint("source_block", { mode: "bigint" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.chainId, table.bucket, table.metric, table.dimensionKey] })],
+);
 
 export const indexerCursors = pgTable("indexer_cursors", {
   chainId: integer("chain_id").primaryKey(),

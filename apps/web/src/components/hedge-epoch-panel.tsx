@@ -49,14 +49,14 @@ export function HedgeEpochPanel() {
   const premium = (epochData?.[7] as bigint | undefined) ?? 0n;
   const closed = (epochData?.[10] as boolean | undefined) ?? false;
   const realizedPnl = (epochData?.[8] as bigint | undefined) ?? 0n;
-  const openPositions = (epochData?.[9] as number | undefined) ?? 0;
+  const openPositions = (epochData?.[9] as bigint | undefined) ?? 0n;
   const settlementDeadline = (epochData?.[4] as number | undefined) ?? 0;
   const refetchReads = reads.refetch;
   const block = useBlock({ query: { enabled } });
   const approveSimulation = useSimulateContract({ address: usdc, abi: erc20Abi, functionName: "approve", args: vault ? [vault, maxUint256] : undefined, account: address, query: { enabled: enabled && assets > allowance } });
   const depositSimulation = useSimulateContract({ address: vault, abi: MuseLendHedgeEpochVaultAbi, functionName: "deposit", args: address ? [epochId, assets, address] : undefined, account: address, query: { enabled: enabled && assets > 0n && allowance >= assets } });
   const redeemSimulation = useSimulateContract({ address: vault, abi: MuseLendHedgeEpochVaultAbi, functionName: "redeem", args: address ? [epochId, shares, address] : undefined, account: address, query: { enabled: enabled && closed && shares > 0n } });
-  const closeSimulation = useSimulateContract({ address: vault, abi: MuseLendHedgeEpochVaultAbi, functionName: "closeEpoch", args: [epochId], account: address, query: { enabled: enabled && !closed && openPositions === 0 && Boolean(block.data && block.data.timestamp >= BigInt((epochData?.[3] as number | undefined) ?? 0)) } });
+  const closeSimulation = useSimulateContract({ address: vault, abi: MuseLendHedgeEpochVaultAbi, functionName: "closeEpoch", args: [epochId], account: address, query: { enabled: enabled && !closed && openPositions === 0n && Boolean(block.data && block.data.timestamp >= BigInt((epochData?.[3] as number | undefined) ?? 0)) } });
   const transaction = useWriteContract();
   const receipt = useTrackedTransaction(transaction.data);
   const busy = transaction.isPending || receipt.status === "confirming";

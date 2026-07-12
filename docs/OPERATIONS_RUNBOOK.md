@@ -9,6 +9,15 @@ uses a bounded in-memory fallback so local work does not require managed infrast
 Monitor Redis availability and `429` rate before changing limits. Never disable the limiter
 to mitigate an outage.
 
+## Optional database persistence
+
+Chain reads and verified quote calculations remain available when `DATABASE_URL` is absent or
+temporarily unavailable. Token metadata caches and sanitized quote telemetry use a one-second
+best-effort write deadline and never contain wallet, IP, cookie, signature or arbitrary calldata.
+Legal and risk acceptances are different: those endpoints return `PERSISTENCE_UNAVAILABLE`
+unless the signed record is durably stored. Apply Drizzle migrations before enabling readiness;
+analytics aggregates are derived/non-authoritative and must always retain a source block.
+
 ## Runtime observability
 
 Route handlers emit newline-delimited JSON events suitable for Vercel Runtime Logs. The

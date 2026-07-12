@@ -3,6 +3,7 @@ import { createPublicClient, http, parseAbi, type Address } from "viem";
 import { baseSepolia } from "viem/chains";
 import { apiError, completeRequest, parseBody, rateLimitResponse, requestContext, withTimeout } from "@/lib/api";
 import { tokenRequest } from "@/lib/api-schemas";
+import { cacheTokenMetadata } from "@/lib/optional-persistence";
 
 const metadataAbi = parseAbi([
   "function name() view returns (string)",
@@ -23,9 +24,12 @@ export async function POST(request: Request) {
       client.readContract({ address: token, abi: metadataAbi, functionName: "symbol" }),
       client.readContract({ address: token, abi: metadataAbi, functionName: "decimals" }),
     ]));
+    const safeName = name.slice(0, 128);
+    const safeSymbol = symbol.slice(0, 32);
+    await cacheTokenMetadata({ address: token, name: safeName, symbol: safeSymbol, decimals });
     completeRequest(context, 200);
     return NextResponse.json(
-      { token, name: name.slice(0, 128), symbol: symbol.slice(0, 32), decimals, source: "base-sepolia", requestId: context.requestId },
+      { token, name: safeName, symbol: safeSymbol, decimals, source: "base-sepolia", requestId: context.requestId },
       { headers: { "cache-control": "public, max-age=60, stale-while-revalidate=300", "x-request-id": context.requestId } },
     );
   } catch {

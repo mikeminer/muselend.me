@@ -44,6 +44,8 @@ explicit owner gates.
   withdrawal claims and settled-epoch closure without adding any unbounded on-chain loop.
 - [x] Expose verified roles, risk config and adapter status in admin; simulate typed governance
   targets as the timelock before proposer-only scheduling with the enforced minimum delay.
+- [x] Complete the non-authoritative persistence schema and migrations; cache sanitized token
+  metadata and quote outcomes without making chain responses depend on database availability.
 - [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
   fail-closed behavior.
 - [ ] Connect production persistence and observability after the owner provisions the

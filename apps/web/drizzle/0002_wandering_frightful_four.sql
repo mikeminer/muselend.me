@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "hedge_snapshot_chain_epoch_block_idx" ON "hedge_epoch_snapshots" USING btree ("chain_id","epoch_id","block_number");--> statement-breakpoint
+CREATE UNIQUE INDEX "senior_snapshot_chain_block_idx" ON "senior_pool_snapshots" USING btree ("chain_id","block_number");

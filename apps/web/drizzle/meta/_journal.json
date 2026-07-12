@@ -8,6 +8,20 @@
       "when": 1783880770938,
       "tag": "0000_married_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783894597197,
+      "tag": "0001_illegal_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783895030669,
+      "tag": "0002_wandering_frightful_four",
+      "breakpoints": true
     }
   ]
 }
