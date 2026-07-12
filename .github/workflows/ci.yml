@@ -25,6 +25,10 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm --filter @muselend/web exec playwright install --with-deps chromium
       - working-directory: packages/contracts
+        run: |
+          forge install foundry-rs/forge-std@v1.16.2 --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+      - working-directory: packages/contracts
         run: forge build
       - run: pnpm --filter @muselend/web test:e2e
         env: { RUN_ANVIL_E2E: "1" }
