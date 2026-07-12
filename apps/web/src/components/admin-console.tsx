@@ -6,10 +6,11 @@ import {
   useAccount,
   useReadContracts,
   useSimulateContract,
-  useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
+import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
+import { TransactionStatus } from "@/components/transaction-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,8 +60,8 @@ export function AdminConsole() {
     query: { enabled: enabled && isRiskAdmin && openingsPaused },
   });
   const transaction = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash: transaction.data });
-  const busy = transaction.isPending || receipt.isLoading;
+  const receipt = useTrackedTransaction(transaction.data);
+  const busy = transaction.isPending || receipt.status === "confirming";
 
   if (!deploymentConfigured) return <Alert><AlertTitle>Testnet deployment not configured</AlertTitle><AlertDescription>The console is fail-closed until every verified address, including RiskManager and timelock, is published.</AlertDescription></Alert>;
   if (!isConnected) return <Alert><AlertTitle>Connect a wallet</AlertTitle><AlertDescription>Role checks are performed directly against the deployed AccessControl contracts.</AlertDescription></Alert>;
@@ -89,8 +90,7 @@ export function AdminConsole() {
       <p className="text-sm text-muted-foreground">Every enabled write is simulated with the connected account before the wallet receives a request.</p>
       {!openingsPaused && isGuardian ? <Button variant="destructive" disabled={!pauseSimulation.data?.request || busy} onClick={() => pauseSimulation.data?.request && transaction.writeContract(pauseSimulation.data.request)}>{busy ? "Confirming…" : "Pause new risk"}</Button> : null}
       {openingsPaused && isRiskAdmin ? <Button disabled={!unpauseSimulation.data?.request || busy} onClick={() => unpauseSimulation.data?.request && transaction.writeContract(unpauseSimulation.data.request)}>{busy ? "Confirming…" : "Unpause after review"}</Button> : null}
-      {transaction.error ? <p className="text-sm text-destructive">{transaction.error.message}</p> : null}
-      {receipt.isSuccess ? <p className="text-sm text-emerald-300">Governance transaction confirmed on Base Sepolia.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Governance transaction" />
     </CardContent></Card>
   </div>;
 }

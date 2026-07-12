@@ -6,11 +6,12 @@ import { formatUnits, maxUint256, parseAbi, parseUnits } from "viem";
 import {
   useAccount,
   useReadContracts,
-  useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
+import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
 import { MetricCard } from "@/components/metric-card";
+import { TransactionStatus } from "@/components/transaction-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,8 +53,8 @@ export function SeniorVaultPanel() {
   const parsedAmount = useMemo(() => safeParse(amount), [amount]);
   const parsedShares = useMemo(() => safeParse(queueShares), [queueShares]);
   const transaction = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash: transaction.data });
-  const busy = transaction.isPending || receipt.isLoading;
+  const receipt = useTrackedTransaction(transaction.data);
+  const busy = transaction.isPending || receipt.status === "confirming";
 
   const approve = () => {
     if (!usdc || !vault) return;
@@ -151,8 +152,7 @@ export function SeniorVaultPanel() {
           </ActionCard>
         </TabsContent>
       </Tabs>
-      {transaction.error ? <p className="mt-4 text-sm text-destructive">{transaction.error.message}</p> : null}
-      {receipt.isSuccess ? <p className="mt-4 text-sm text-emerald-300">Transaction confirmed on Base Sepolia.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Vault transaction" />
       {!isConnected ? <p className="mt-4 text-sm text-muted-foreground">Connect a wallet to load balances and transact.</p> : null}
       {isConnected && chainId !== 84532 ? <p className="mt-4 text-sm text-amber-200">Switch to Base Sepolia.</p> : null}
     </>

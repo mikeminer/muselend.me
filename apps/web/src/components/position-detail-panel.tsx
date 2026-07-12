@@ -2,8 +2,10 @@
 
 import { MuseLendPositionManagerAbi } from "@muselend/abis";
 import { formatUnits, maxUint256, parseAbi } from "viem";
-import { useAccount, useBlock, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useBlock, useReadContracts, useWriteContract } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
+import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
+import { TransactionStatus } from "@/components/transaction-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,9 +33,9 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
   const debt = reads.data?.[1]?.status === "success" ? reads.data[1].result as bigint : 0n;
   const allowance = reads.data?.[2]?.status === "success" ? reads.data[2].result as bigint : 0n;
   const transaction = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash: transaction.data });
+  const receipt = useTrackedTransaction(transaction.data);
   const block = useBlock({ query: { enabled } });
-  const busy = transaction.isPending || receipt.isLoading;
+  const busy = transaction.isPending || receipt.status === "confirming";
   const ownsPosition = Boolean(position && address && position[0].toLowerCase() === address.toLowerCase());
   const expired = Boolean(position && block.data && block.data.timestamp > BigInt(position[12] + 3 * 24 * 60 * 60));
 
@@ -69,8 +71,7 @@ export function PositionDetailPanel({ id }: { id: bigint }) {
       {(state === "Open" || state === "Settlement pending") && expired ? <Button className="w-full" variant="destructive" onClick={settle} disabled={busy}>{busy ? "Confirming…" : "Settle expired position"}</Button> : null}
       {state === "Open" && ownsPosition ? <Button className="w-full" variant="outline" onClick={markPending} disabled={busy}>{busy ? "Confirming…" : "Mark settlement pending"}</Button> : null}
       <p className="text-sm text-muted-foreground">Full and capped buyback actions require a fresh verified swap quote and remain unavailable until the quote adapter is configured.</p>
-      {transaction.error ? <p className="text-sm text-destructive">{transaction.error.message}</p> : null}
-      {receipt.isSuccess ? <p className="text-sm text-emerald-300">Transaction confirmed on Base Sepolia.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Position transaction" />
     </CardContent></Card>
   </div>;
 }

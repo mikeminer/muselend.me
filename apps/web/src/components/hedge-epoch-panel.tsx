@@ -3,9 +3,11 @@
 import { MuseLendHedgeEpochVaultAbi } from "@muselend/abis";
 import { useMemo, useState } from "react";
 import { formatUnits, maxUint256, parseAbi, parseUnits } from "viem";
-import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useReadContracts, useWriteContract } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
+import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
 import { MetricCard } from "@/components/metric-card";
+import { TransactionStatus } from "@/components/transaction-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,8 +49,8 @@ export function HedgeEpochPanel() {
   const premium = (epochData?.[7] as bigint | undefined) ?? 0n;
   const closed = (epochData?.[10] as boolean | undefined) ?? false;
   const transaction = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash: transaction.data });
-  const busy = transaction.isPending || receipt.isLoading;
+  const receipt = useTrackedTransaction(transaction.data);
+  const busy = transaction.isPending || receipt.status === "confirming";
 
   const approve = () => {
     if (usdc && vault) transaction.writeContract({ address: usdc, abi: erc20Abi, functionName: "approve", args: [vault, maxUint256] });
@@ -116,8 +118,7 @@ export function HedgeEpochPanel() {
           </p>
         </CardContent>
       </Card>
-      {transaction.error ? <p className="mt-4 text-sm text-destructive">{transaction.error.message}</p> : null}
-      {receipt.isSuccess ? <p className="mt-4 text-sm text-emerald-300">Transaction confirmed on Base Sepolia.</p> : null}
+      <TransactionStatus hash={receipt.finalHash} walletPending={transaction.isPending} confirming={receipt.status === "confirming"} confirmed={receipt.status === "confirmed"} error={transaction.error ?? receipt.error} replacementReason={receipt.replacementReason} label="Epoch transaction" />
     </>
   );
 }
