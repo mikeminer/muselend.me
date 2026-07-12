@@ -20,6 +20,12 @@ test("health endpoint is explicit about the disabled mainnet", async ({ request 
     status: "ok",
     network: "base-sepolia",
     mainnetEnabled: false,
+    readyForTransactions: false,
+    readiness: {
+      contracts: false,
+      database: false,
+      redis: false,
+    },
   });
 });
 

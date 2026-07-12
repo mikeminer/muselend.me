@@ -1,6 +1,6 @@
 import { SiweMessage } from "siwe";
 import { NextResponse } from "next/server";
-import { apiError, hasSameOrigin, parseBody, rateLimitResponse, requestContext } from "@/lib/api";
+import { apiError, completeRequest, hasSameOrigin, parseBody, rateLimitResponse, requestContext, withTimeout } from "@/lib/api";
 import { siweVerifyRequest } from "@/lib/api-schemas";
 import { getRedis } from "@/lib/redis";
 import {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       nonce,
       time: new Date().toISOString(),
     });
-    if (!result.success || !(await consumeNonce(getRedis(), nonce))) {
+    if (!result.success || !(await withTimeout(consumeNonce(getRedis(), nonce), 3_000))) {
       return apiError(context.requestId, 401, "INVALID_SIWE", "SIWE signature or nonce rejected");
     }
     const { token, session } = await createSessionToken(message.address as `0x${string}`);
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     );
     setSessionCookie(response, token);
     response.cookies.set(NONCE_COOKIE, "", { path: "/api/auth", maxAge: 0 });
+    completeRequest(context, 200);
     return response;
   } catch {
     return apiError(context.requestId, 401, "INVALID_SIWE", "SIWE verification failed");

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, http, parseAbi, type Address } from "viem";
 import { baseSepolia } from "viem/chains";
-import { apiError, parseBody, rateLimitResponse, requestContext } from "@/lib/api";
+import { apiError, completeRequest, parseBody, rateLimitResponse, requestContext, withTimeout } from "@/lib/api";
 import { tokenRequest } from "@/lib/api-schemas";
 
 const metadataAbi = parseAbi([
@@ -18,11 +18,12 @@ export async function POST(request: Request) {
   try {
     const client = createPublicClient({ chain: baseSepolia, transport: http(process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org") });
     const token = body.token as Address;
-    const [name, symbol, decimals] = await Promise.all([
+    const [name, symbol, decimals] = await withTimeout(Promise.all([
       client.readContract({ address: token, abi: metadataAbi, functionName: "name" }),
       client.readContract({ address: token, abi: metadataAbi, functionName: "symbol" }),
       client.readContract({ address: token, abi: metadataAbi, functionName: "decimals" }),
-    ]);
+    ]));
+    completeRequest(context, 200);
     return NextResponse.json(
       { token, name: name.slice(0, 128), symbol: symbol.slice(0, 32), decimals, source: "base-sepolia", requestId: context.requestId },
       { headers: { "cache-control": "public, max-age=60, stale-while-revalidate=300", "x-request-id": context.requestId } },

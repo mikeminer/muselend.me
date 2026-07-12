@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyMessage } from "viem";
-import { apiError, hasSameOrigin, parseBody, rateLimitResponse, requestContext } from "@/lib/api";
+import { apiError, completeRequest, hasSameOrigin, parseBody, rateLimitResponse, requestContext, withTimeout } from "@/lib/api";
 import { acceptanceRequest } from "@/lib/api-schemas";
 import { getDatabase } from "@/db/client";
 import { legalAcceptances } from "@/db/schema";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       signature: body.signature as `0x${string}`,
     });
     if (!valid) return apiError(context.requestId, 401, "INVALID_SIGNATURE", "Acceptance signature rejected");
-    await getDatabase()
+    await withTimeout(Promise.resolve(getDatabase()
       .insert(legalAcceptances)
       .values({
         chainId: body.chainId,
@@ -38,7 +38,8 @@ export async function POST(request: Request) {
         version: body.version,
         signature: body.signature,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()), 5_000);
+    completeRequest(context, 201);
     return NextResponse.json(
       { accepted: true, version: body.version, requestId: context.requestId },
       { status: 201, headers: { "cache-control": "no-store", "x-request-id": context.requestId } },

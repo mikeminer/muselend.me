@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requestContext } from "./api";
+import { OperationTimeoutError, requestContext, withTimeout } from "./api";
 
 const redis = vi.hoisted(() => ({ eval: vi.fn() }));
 vi.mock("@/lib/redis", () => ({ getRedis: () => redis }));
@@ -33,5 +33,10 @@ describe("requestContext", () => {
     const context = await requestContext(new Request("http://localhost/api/redis", { headers: { "x-forwarded-for": "203.0.113.1" } }), 3);
     expect(context).toMatchObject({ limited: true, remaining: 0, backend: "redis" });
     expect(redis.eval).toHaveBeenCalledOnce();
+  });
+
+  it("rejects operations that exceed their explicit deadline", async () => {
+    const never = new Promise<never>(() => undefined);
+    await expect(withTimeout(never, 5)).rejects.toBeInstanceOf(OperationTimeoutError);
   });
 });

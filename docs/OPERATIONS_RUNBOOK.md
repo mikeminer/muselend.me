@@ -9,6 +9,21 @@ uses a bounded in-memory fallback so local work does not require managed infrast
 Monitor Redis availability and `429` rate before changing limits. Never disable the limiter
 to mitigate an outage.
 
+## Runtime observability
+
+Route handlers emit newline-delimited JSON events suitable for Vercel Runtime Logs. The
+baseline fields are `service`, timestamp, level, event, request ID, route, status, duration
+and rate-limit backend. Logs intentionally exclude wallet addresses, client IP values,
+signatures, cookies, request bodies and RPC credentials. Redis and SIWE nonce operations use
+short deadlines, database writes use a five-second deadline, and read-only RPC calls use an
+eight-second deadline.
+
+`/api/health` is a liveness endpoint and remains HTTP 200 while reporting separate readiness
+booleans for contracts, database, Redis and Vercel. `readyForTransactions=false` must block
+production promotion even when liveness is healthy. After deployment, inspect Runtime Logs
+for `api.error`, verify no secrets/PII appear, and configure alerting or a drain only after its
+plan and cost are approved.
+
 ## Incident sequence
 
 1. Confirm chain, release commit, verified addresses and current pause/role state.

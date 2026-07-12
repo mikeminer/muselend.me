@@ -1,6 +1,6 @@
 import { generateNonce } from "siwe";
 import { NextResponse } from "next/server";
-import { apiError, hasSameOrigin, rateLimitResponse, requestContext } from "@/lib/api";
+import { apiError, completeRequest, hasSameOrigin, rateLimitResponse, requestContext, withTimeout } from "@/lib/api";
 import { getRedis } from "@/lib/redis";
 import { NONCE_COOKIE, nonceKey } from "@/lib/session";
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const nonce = generateNonce();
     const redis = getRedis();
-    await redis.set(nonceKey(nonce), "pending", { ex: 300, nx: true });
+    await withTimeout(redis.set(nonceKey(nonce), "pending", { ex: 300, nx: true }), 3_000);
     const response = NextResponse.json(
       { nonce, chainId: 84532, domain: new URL(request.url).host, requestId: context.requestId },
       { headers: { "cache-control": "no-store", "x-request-id": context.requestId } },
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       path: "/api/auth",
       maxAge: 300,
     });
+    completeRequest(context, 200);
     return response;
   } catch {
     return apiError(context.requestId, 503, "AUTH_UNAVAILABLE", "Wallet authentication is unavailable");
