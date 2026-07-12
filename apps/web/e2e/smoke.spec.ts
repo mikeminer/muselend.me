@@ -45,6 +45,9 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText(/sarà venduto all’apertura/i).first()).toBeVisible();
   await expect(page.getByText(/rimarranno bloccati nella posizione/i)).toBeVisible();
   await expect(page.getByText(/quantità inferiore di Creator Token/i)).toBeVisible();
+  await expect(page.getByText("Dettagli della posizione", { exact: true })).toBeVisible();
+  await expect(page.getByText("Riepilogo della quotazione", { exact: true })).toBeVisible();
+  await expect(page.getByText("Il riscatto può essere parziale", { exact: true })).toBeVisible();
   await page.goto("/app");
   await expect(page.getByRole("heading", { level: 1, name: "La tua panoramica MuseLend" })).toBeVisible();
   await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
