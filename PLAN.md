@@ -40,6 +40,8 @@ explicit owner gates.
   settlement, including explicit slippage and borrower-controlled top-up limits.
 - [x] Wire the borrower UI through canonical-token validation, protected sell quote, token
   approval, on-chain risk accounting, fresh simulation and atomic position opening.
+- [x] Require pre-wallet simulation for senior and junior writes; expose permissionless FIFO
+  withdrawal claims and settled-epoch closure without adding any unbounded on-chain loop.
 - [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
   fail-closed behavior.
 - [ ] Connect production persistence and observability after the owner provisions the

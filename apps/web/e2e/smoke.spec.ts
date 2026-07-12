@@ -32,6 +32,7 @@ test("health endpoint is explicit about the disabled mainnet", async ({ request 
 test("Italian locale persists and translates critical borrower risks", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Italiano/i }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "it");
   await page.goto("/app/borrow");
   await expect(page.locator("html")).toHaveAttribute("lang", "it");
   await expect(page.getByText(/sarà venduto all’apertura/i).first()).toBeVisible();

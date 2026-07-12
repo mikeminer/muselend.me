@@ -1,11 +1,13 @@
 "use client";
 
 import { MuseLendUSDCVaultAbi } from "@muselend/abis";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatUnits, maxUint256, parseAbi, parseUnits } from "viem";
 import {
   useAccount,
+  useReadContract,
   useReadContracts,
+  useSimulateContract,
   useWriteContract,
 } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
@@ -48,45 +50,35 @@ export function SeniorVaultPanel() {
     query: { enabled },
   });
   const values = reads.data?.map((result) => (result.status === "success" ? result.result : 0n));
+  const refetchReads = reads.refetch;
   const [walletBalance = 0n, allowance = 0n, shares = 0n, cash = 0n, totalAssets = 0n, debt = 0n, maxWithdraw = 0n] =
     (values ?? []) as bigint[];
   const parsedAmount = useMemo(() => safeParse(amount), [amount]);
   const parsedShares = useMemo(() => safeParse(queueShares), [queueShares]);
+  const nextRequest = useReadContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "nextRequestToProcess", query: { enabled } });
+  const queuedRequest = useReadContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "withdrawalRequests", args: typeof nextRequest.data === "bigint" ? [nextRequest.data] : undefined, query: { enabled: enabled && typeof nextRequest.data === "bigint" } });
+  const queued = queuedRequest.data as readonly [`0x${string}`, `0x${string}`, bigint, boolean] | undefined;
+  const queuedAssets = useReadContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "previewRedeem", args: queued ? [queued[2]] : undefined, query: { enabled: enabled && Boolean(queued && !queued[3]) } });
+  const refetchNextRequest = nextRequest.refetch;
+  const refetchQueuedRequest = queuedRequest.refetch;
+  const refetchQueuedAssets = queuedAssets.refetch;
+  const approveSimulation = useSimulateContract({ address: usdc, abi: erc20Abi, functionName: "approve", args: vault ? [vault, maxUint256] : undefined, account: address, query: { enabled: enabled && parsedAmount > allowance } });
+  const depositSimulation = useSimulateContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "deposit", args: address ? [parsedAmount, address] : undefined, account: address, query: { enabled: enabled && parsedAmount > 0n && parsedAmount <= walletBalance && allowance >= parsedAmount } });
+  const withdrawSimulation = useSimulateContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "withdraw", args: address ? [parsedAmount, address, address] : undefined, account: address, query: { enabled: enabled && parsedAmount > 0n && parsedAmount <= maxWithdraw } });
+  const queueSimulation = useSimulateContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "requestRedeem", args: address ? [parsedShares, address] : undefined, account: address, query: { enabled: enabled && parsedShares > 0n && parsedShares <= shares } });
+  const claimSimulation = useSimulateContract({ address: vault, abi: MuseLendUSDCVaultAbi, functionName: "claimNextWithdrawal", account: address, query: { enabled: enabled && Boolean(queued && !queued[3]) } });
   const transaction = useWriteContract();
   const receipt = useTrackedTransaction(transaction.data);
   const busy = transaction.isPending || receipt.status === "confirming";
 
-  const approve = () => {
-    if (!usdc || !vault) return;
-    transaction.writeContract({ address: usdc, abi: erc20Abi, functionName: "approve", args: [vault, maxUint256] });
-  };
-  const deposit = () => {
-    if (!vault || !address || !parsedAmount) return;
-    transaction.writeContract({
-      address: vault,
-      abi: MuseLendUSDCVaultAbi,
-      functionName: "deposit",
-      args: [parsedAmount, address],
-    });
-  };
-  const withdraw = () => {
-    if (!vault || !address || !parsedAmount) return;
-    transaction.writeContract({
-      address: vault,
-      abi: MuseLendUSDCVaultAbi,
-      functionName: "withdraw",
-      args: [parsedAmount, address, address],
-    });
-  };
-  const queue = () => {
-    if (!vault || !address || !parsedShares) return;
-    transaction.writeContract({
-      address: vault,
-      abi: MuseLendUSDCVaultAbi,
-      functionName: "requestRedeem",
-      args: [parsedShares, address],
-    });
-  };
+  useEffect(() => {
+    if (receipt.status === "confirmed") void Promise.all([refetchReads(), refetchNextRequest(), refetchQueuedRequest(), refetchQueuedAssets()]);
+  }, [receipt.status, refetchReads, refetchNextRequest, refetchQueuedRequest, refetchQueuedAssets]);
+  const approve = () => { if (approveSimulation.data?.request) transaction.writeContract(approveSimulation.data.request); };
+  const deposit = () => { if (depositSimulation.data?.request) transaction.writeContract(depositSimulation.data.request); };
+  const withdraw = () => { if (withdrawSimulation.data?.request) transaction.writeContract(withdrawSimulation.data.request); };
+  const queue = () => { if (queueSimulation.data?.request) transaction.writeContract(queueSimulation.data.request); };
+  const claim = () => { if (claimSimulation.data?.request) transaction.writeContract(claimSimulation.data.request); };
 
   const actionDisabled = !enabled || !parsedAmount || parsedAmount <= 0n || busy;
   return (
@@ -121,11 +113,11 @@ export function SeniorVaultPanel() {
               disabled={!enabled}
             />
             {parsedAmount && allowance < parsedAmount ? (
-              <Button className="w-full" onClick={approve} disabled={actionDisabled}>
+              <Button className="w-full" onClick={approve} disabled={actionDisabled || !approveSimulation.data?.request}>
                 {busy ? "Confirming…" : "Approve USDC"}
               </Button>
             ) : (
-              <Button className="w-full" onClick={deposit} disabled={actionDisabled || parsedAmount > walletBalance}>
+              <Button className="w-full" onClick={deposit} disabled={actionDisabled || !depositSimulation.data?.request}>
                 {busy ? "Confirming…" : "Deposit"}
               </Button>
             )}
@@ -136,7 +128,7 @@ export function SeniorVaultPanel() {
             <p className="text-sm text-muted-foreground">Immediately withdrawable: {format(maxWithdraw)}</p>
             <Label htmlFor="withdraw-amount">Assets</Label>
             <Input id="withdraw-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={!enabled} />
-            <Button className="w-full" onClick={withdraw} disabled={actionDisabled || parsedAmount > maxWithdraw}>
+            <Button className="w-full" onClick={withdraw} disabled={actionDisabled || !withdrawSimulation.data?.request}>
               {busy ? "Confirming…" : "Withdraw"}
             </Button>
           </ActionCard>
@@ -146,9 +138,15 @@ export function SeniorVaultPanel() {
             <p className="text-sm text-muted-foreground">Queueing transfers shares into FIFO escrow until cash returns.</p>
             <Label htmlFor="queue-shares">Shares</Label>
             <Input id="queue-shares" inputMode="decimal" value={queueShares} onChange={(event) => setQueueShares(event.target.value)} disabled={!enabled} />
-            <Button className="w-full" onClick={queue} disabled={!enabled || !parsedShares || parsedShares > shares || busy}>
+            <Button className="w-full" onClick={queue} disabled={!enabled || busy || !queueSimulation.data?.request}>
               {busy ? "Confirming…" : "Enter withdrawal queue"}
             </Button>
+            <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+              <p>Next FIFO request: {typeof nextRequest.data === "bigint" ? `#${nextRequest.data}` : "—"}</p>
+              <p>Receiver: {queued ? `${queued[1].slice(0, 8)}…${queued[1].slice(-6)}` : "No pending request"}</p>
+              <p>Estimated assets: {typeof queuedAssets.data === "bigint" ? format(queuedAssets.data) : "—"}</p>
+            </div>
+            <Button className="w-full" variant="outline" onClick={claim} disabled={busy || !claimSimulation.data?.request}>Claim next FIFO request</Button>
           </ActionCard>
         </TabsContent>
       </Tabs>
