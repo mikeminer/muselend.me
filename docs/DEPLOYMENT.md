@@ -46,3 +46,9 @@ when the selected Base explorer API credential is configured. Do not use `--unlo
 After confirmation, compare `broadcast/DeployBaseSepolia.s.sol/84532/run-latest.json` with
 `deployments/base-sepolia.json`, verify source and bytecode, exercise read-only health checks,
 and only then copy the manifest addresses into Vercel environment variables.
+
+Set `DEPLOYMENT_BLOCK` from the generated manifest and create a unique, random
+`INDEXER_SYNC_SECRET` of at least 32 characters. Apply the database schema before enabling
+the authenticated `/api/indexer/sync` scheduler. The indexer deliberately trails the chain
+by five confirmations and verifies stored block hashes, so a provider inconsistency or
+short reorg is replayed rather than silently incorporated into product state.

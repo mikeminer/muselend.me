@@ -35,7 +35,7 @@ explicit owner gates.
 - [x] Connect the admin console to deployed role checks and pre-write simulations; it remains
   fail-closed until verified deployment addresses are supplied.
 - [x] Add wallet connectivity, transaction lifecycle, direct-chain fallback, APIs,
-  indexer/schema foundations, rate limiting, and security headers.
+  reorg-aware finalized-block indexing, rate limiting, and security headers.
 - [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
   fail-closed behavior.
 - [ ] Connect production persistence and observability after the owner provisions the

@@ -24,6 +24,9 @@ importers:
       '@muselend/abis':
         specifier: workspace:*
         version: link:../../packages/abis
+      '@muselend/indexer':
+        specifier: workspace:*
+        version: link:../../packages/indexer
       '@neondatabase/serverless':
         specifier: 1.1.0
         version: 1.1.0
