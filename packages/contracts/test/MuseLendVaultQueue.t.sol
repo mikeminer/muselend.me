@@ -4,6 +4,7 @@ import { Test } from "forge-std/Test.sol";
 import { InterestRateModel } from "../src/InterestRateModel.sol";
 import { MuseLendUSDCVault } from "../src/MuseLendUSDCVault.sol";
 import { MockERC20 } from "../src/mocks/MockERC20.sol";
+import { MuseLendRiskManager } from "../src/MuseLendRiskManager.sol";
 
 contract MuseLendVaultQueueTest is Test {
     MockERC20 usdc;
@@ -17,7 +18,10 @@ contract MuseLendVaultQueueTest is Test {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        vault = new MuseLendUSDCVault(usdc, address(this), rate, makeAddr("treasury"));
+        MuseLendRiskManager risk = new MuseLendRiskManager(
+            address(this), address(this), address(this), false, 1_000_000e6, 500_000e6, 50
+        );
+        vault = new MuseLendUSDCVault(usdc, address(this), rate, risk, makeAddr("treasury"));
         vault.setPositionManager(address(this));
         usdc.mint(lender, 1000e6);
         vm.startPrank(lender);

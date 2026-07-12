@@ -117,8 +117,8 @@ test.describe("Anvil protocol lifecycle", () => {
       parseUnits("500000", 6),
       50,
     ]);
-    const senior = await deploy("MuseLendUSDCVault", [usdc.address, admin, rate.address, treasury.address]);
-    const junior = await deploy("MuseLendHedgeEpochVault", [usdc.address, admin]);
+    const senior = await deploy("MuseLendUSDCVault", [usdc.address, admin, rate.address, risk.address, treasury.address]);
+    const junior = await deploy("MuseLendHedgeEpochVault", [usdc.address, admin, risk.address]);
     const receipt = await deploy("MuseLendPositionReceipt", [admin]);
     const validator = await deploy("CreatorTokenValidator", [admin]);
     const manager = await deploy("MuseLendPositionManager", [

@@ -40,10 +40,10 @@ contract MuseLendProtocolTest is Test {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        senior = new MuseLendUSDCVault(usdc, admin, rate, treasury);
-        junior = new MuseLendHedgeEpochVault(usdc, admin);
-        receipt = new MuseLendPositionReceipt(admin);
         risk = new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6, 50);
+        senior = new MuseLendUSDCVault(usdc, admin, rate, risk, treasury);
+        junior = new MuseLendHedgeEpochVault(usdc, admin, risk);
+        receipt = new MuseLendPositionReceipt(admin);
         validator = new CreatorTokenValidator(admin);
         manager = new MuseLendPositionManager(
             usdc, senior, junior, receipt, risk, validator, admin, admin, address(adapter), treasury
@@ -208,5 +208,60 @@ contract MuseLendProtocolTest is Test {
         assertEq(usdc.balanceOf(treasury), 3_000_000 + senior.protocolFeesPaid());
         (,,,,,,,,,,,,,,,, MuseLendPositionManager.State state) = manager.positions(id);
         assertEq(uint256(state), uint256(MuseLendPositionManager.State.Defaulted));
+    }
+
+    function testPauseBlocksNewRiskButPreservesRepayAndLiquidWithdrawal() public {
+        uint256 id = open();
+        vm.prank(admin);
+        junior.createEpoch(
+            uint40(block.timestamp - 1),
+            uint40(block.timestamp + 100),
+            uint40(block.timestamp + 100),
+            uint40(block.timestamp + 8 days),
+            uint40(block.timestamp + 11 days)
+        );
+        vm.prank(admin);
+        risk.pauseRisk();
+
+        usdc.mint(lender, 1e6);
+        vm.startPrank(lender);
+        vm.expectRevert();
+        senior.deposit(1e6, lender);
+        vm.stopPrank();
+
+        usdc.mint(underwriter, 1e6);
+        vm.prank(underwriter);
+        vm.expectRevert(MuseLendHedgeEpochVault.DepositsPaused.selector);
+        junior.deposit(2, 1e6, underwriter);
+
+        vm.startPrank(borrower);
+        creator.approve(address(manager), type(uint256).max);
+        vm.expectRevert(MuseLendPositionManager.RiskPaused.selector);
+        manager.openPosition(
+            MuseLendPositionManager.OpenParams(
+                address(creator),
+                address(adapter),
+                100e18,
+                999e6,
+                600e6,
+                7 days,
+                1,
+                block.timestamp + 1 hours,
+                route
+            )
+        );
+        vm.stopPrank();
+
+        usdc.mint(borrower, 100e6);
+        vm.startPrank(borrower);
+        usdc.approve(address(manager), type(uint256).max);
+        manager.repay(id);
+        vm.stopPrank();
+        assertEq(manager.currentDebt(id), 0);
+
+        uint256 before = usdc.balanceOf(lender);
+        vm.prank(lender);
+        senior.withdraw(1e6, lender, lender);
+        assertEq(usdc.balanceOf(lender), before + 1e6);
     }
 }

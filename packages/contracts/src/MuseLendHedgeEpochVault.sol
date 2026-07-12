@@ -8,6 +8,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { MuseLendRiskManager } from "./MuseLendRiskManager.sol";
 
 /// @title Fixed-epoch junior hedge vault
 /// @notice Epoch shares are non-transferable and redeemable only after every liability settles.
@@ -22,6 +23,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
     error OnlyPositionManager();
     error ManagerAlreadySet();
     error SharesNonTransferable();
+    error DepositsPaused();
 
     struct Epoch {
         uint40 depositStart;
@@ -37,6 +39,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
         bool closed;
     }
     IERC20 public immutable usdc;
+    MuseLendRiskManager public immutable riskManager;
     address public positionManager;
     uint256 public nextEpochId = 1;
     mapping(uint256 => Epoch) public epochs;
@@ -56,8 +59,10 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
     );
     event PremiumRecorded(uint256 indexed epochId, uint256 indexed positionId, uint256 amount);
 
-    constructor(IERC20 usdc_, address admin) ERC1155("") {
+    constructor(IERC20 usdc_, address admin, MuseLendRiskManager riskManager_) ERC1155("") {
+        if (address(riskManager_) == address(0)) revert InvalidEpoch();
         usdc = usdc_;
+        riskManager = riskManager_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(EPOCH_ADMIN_ROLE, admin);
     }
@@ -92,6 +97,7 @@ contract MuseLendHedgeEpochVault is ERC1155, AccessControl, ReentrancyGuard {
         nonReentrant
         returns (uint256 shares)
     {
+        if (riskManager.depositsPaused()) revert DepositsPaused();
         Epoch storage e = epochs[id];
         if (block.timestamp < e.depositStart || block.timestamp >= e.depositEnd || e.closed) {
             revert EpochNotOpen();

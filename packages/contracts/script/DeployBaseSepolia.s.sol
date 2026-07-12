@@ -61,9 +61,9 @@ contract DeployBaseSepolia is Script {
         d.treasury = new ProtocolTreasury(IERC20Metadata(BASE_SEPOLIA_USDC), admin, address(d.timelock));
         d.validator = new CreatorTokenValidator(admin);
         d.seniorVault = new MuseLendUSDCVault(
-            IERC20Metadata(BASE_SEPOLIA_USDC), admin, d.rateModel, address(d.treasury)
+            IERC20Metadata(BASE_SEPOLIA_USDC), admin, d.rateModel, d.riskManager, address(d.treasury)
         );
-        d.hedgeVault = new MuseLendHedgeEpochVault(IERC20Metadata(BASE_SEPOLIA_USDC), admin);
+        d.hedgeVault = new MuseLendHedgeEpochVault(IERC20Metadata(BASE_SEPOLIA_USDC), admin, d.riskManager);
         d.receipt = new MuseLendPositionReceipt(admin);
         d.positionManager = new MuseLendPositionManager(
             IERC20Metadata(BASE_SEPOLIA_USDC),

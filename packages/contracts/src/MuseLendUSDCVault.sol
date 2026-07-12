@@ -10,6 +10,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { InterestRateModel } from "./InterestRateModel.sol";
+import { MuseLendRiskManager } from "./MuseLendRiskManager.sol";
 
 /// @title MuseLend senior USDC vault
 /// @notice ERC-4626 cash vault with debt-share accounting and no administrative asset sweep.
@@ -33,6 +34,7 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
     uint256 public nextRequestId = 1;
     uint256 public nextRequestToProcess = 1;
     InterestRateModel public immutable rateModel;
+    MuseLendRiskManager public immutable riskManager;
     address public immutable feeRecipient;
     uint256 public protocolFeesPaid;
 
@@ -60,14 +62,23 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
     );
     event WithdrawalClaimed(uint256 indexed requestId, uint256 shares, uint256 assets);
 
-    constructor(IERC20 usdc, address admin, InterestRateModel rateModel_, address feeRecipient_)
-        ERC20("MuseLend Senior USDC Vault", "msUSDC")
-        ERC4626(usdc)
-    {
-        if (address(rateModel_) == address(0) || feeRecipient_ == address(0)) revert InvalidRepayment();
+    constructor(
+        IERC20 usdc,
+        address admin,
+        InterestRateModel rateModel_,
+        MuseLendRiskManager riskManager_,
+        address feeRecipient_
+    ) ERC20("MuseLend Senior USDC Vault", "msUSDC") ERC4626(usdc) {
+        if (
+            address(rateModel_) == address(0) || address(riskManager_) == address(0)
+                || feeRecipient_ == address(0)
+        ) {
+            revert InvalidRepayment();
+        }
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MANAGER_ADMIN_ROLE, admin);
         rateModel = rateModel_;
+        riskManager = riskManager_;
         feeRecipient = feeRecipient_;
         lastAccrual = uint40(block.timestamp);
     }
@@ -117,6 +128,14 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
 
     function maxWithdraw(address owner) public view override returns (uint256) {
         return Math.min(super.maxWithdraw(owner), availableCash());
+    }
+
+    function maxDeposit(address receiver) public view override returns (uint256) {
+        return riskManager.depositsPaused() ? 0 : super.maxDeposit(receiver);
+    }
+
+    function maxMint(address receiver) public view override returns (uint256) {
+        return riskManager.depositsPaused() ? 0 : super.maxMint(receiver);
     }
 
     function maxRedeem(address owner) public view override returns (uint256) {
