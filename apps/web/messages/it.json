@@ -194,6 +194,28 @@
     "schedule": "Pianifica tramite timelock",
     "scheduleTransaction": "Pianificazione governance"
   },
+  "Shared": {
+    "switching": "Cambio rete in corso…",
+    "switchNetwork": "Passa a Base Sepolia",
+    "disconnect": "Disconnetti {address}",
+    "connecting": "Connessione in corso…",
+    "connect": "Collega wallet",
+    "install": "Installa wallet",
+    "openNavigation": "Apri navigazione",
+    "navigation": "Navigazione",
+    "transaction": "Transazione",
+    "reviewWallet": "Controlla la richiesta nel wallet",
+    "confirming": "In attesa della conferma Base Sepolia",
+    "cancelled": "{label} annullata nel wallet",
+    "confirmed": "{label} confermata",
+    "notSubmitted": "La transazione non è stata inviata",
+    "viewExplorer": "Apri su BaseScan",
+    "replacement": "Sostituzione wallet rilevata: {reason}. L’hash sopra è quello della transazione sostitutiva canonica.",
+    "errorRejected": "La richiesta wallet è stata rifiutata. Nessuno stato è cambiato.",
+    "errorGas": "Il wallet non dispone di ETH sufficiente per il gas di rete.",
+    "errorRevert": "La transazione è andata in revert durante simulazione o esecuzione. Nessuna modifica riuscita è stata registrata.",
+    "errorGeneric": "La transazione wallet non è riuscita. Controlla i dettagli nel wallet e riprova."
+  },
   "Borrow": {
     "eyebrow": "Prestito",
     "title": "Apri una posizione creator-token con cap",

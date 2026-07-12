@@ -194,6 +194,28 @@
     "schedule": "Schedule through timelock",
     "scheduleTransaction": "Governance schedule"
   },
+  "Shared": {
+    "switching": "Switching…",
+    "switchNetwork": "Switch to Base Sepolia",
+    "disconnect": "Disconnect {address}",
+    "connecting": "Connecting…",
+    "connect": "Connect wallet",
+    "install": "Install wallet",
+    "openNavigation": "Open navigation",
+    "navigation": "Navigation",
+    "transaction": "Transaction",
+    "reviewWallet": "Review the request in your wallet",
+    "confirming": "Waiting for Base Sepolia confirmation",
+    "cancelled": "{label} cancelled in wallet",
+    "confirmed": "{label} confirmed",
+    "notSubmitted": "Transaction was not submitted",
+    "viewExplorer": "View on BaseScan",
+    "replacement": "Wallet replacement detected: {reason}. The hash above is the canonical replacement transaction.",
+    "errorRejected": "The wallet request was rejected. No state changed.",
+    "errorGas": "The wallet does not have enough ETH for network gas.",
+    "errorRevert": "The transaction reverted during simulation or execution. No successful state change was recorded.",
+    "errorGeneric": "The wallet transaction failed. Review the wallet details and try again."
+  },
   "Borrow": {
     "eyebrow": "Borrow",
     "title": "Open a capped creator-token position",
