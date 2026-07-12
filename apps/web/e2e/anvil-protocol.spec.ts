@@ -50,8 +50,12 @@ test.describe("Anvil protocol lifecycle", () => {
     throw new Error("Anvil did not become ready");
   });
 
-  test.afterAll(() => {
-    if (anvil && !anvil.killed) anvil.kill();
+  test.afterAll(async () => {
+    if (anvil && !anvil.killed) {
+      const exited = new Promise<void>((resolveExit) => anvil.once("exit", () => resolveExit()));
+      anvil.kill();
+      await Promise.race([exited, new Promise<void>((resolveWait) => setTimeout(resolveWait, 2_000))]);
+    }
   });
 
   test("full and capped close, default, epoch redemption, and FIFO withdrawal work end to end", async () => {
@@ -88,6 +92,7 @@ test.describe("Anvil protocol lifecycle", () => {
         abi: contract.abi,
         functionName,
         args,
+        gas: 15_000_000n,
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== "success") throw new Error(`${functionName} transaction reverted`);
