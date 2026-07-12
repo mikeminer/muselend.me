@@ -44,7 +44,7 @@ explicit owner gates.
 
 ## Phase 4 — delivery
 
-- [x] Pass clean install, lint, typecheck, builds, 34 Foundry tests, invariants,
+- [x] Pass clean install, lint, typecheck, builds, 35 Foundry tests, invariants,
   Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
 - [ ] Deploy and verify contracts on Base Sepolia only after a funded testnet signer is
   available and the owner approves signing transactions.

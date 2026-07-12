@@ -19,6 +19,7 @@ contract DeployBaseSepolia is Script {
     address constant BASE_SEPOLIA_ZORA_V4_HOOK = 0xe0eC17Ab9f7ce52cC60DFB64E0A0A705d02Bd040;
     error WrongChain();
     error InvalidCanonicalUsdc();
+    error PostDeploymentInvariant();
 
     struct Deployment {
         MockZoraCreatorToken creatorToken;
@@ -80,6 +81,81 @@ contract DeployBaseSepolia is Script {
         d.hedgeVault.setPositionManager(address(d.positionManager));
         d.receipt.setPositionManager(address(d.positionManager));
         d.validator.setCanonical(address(d.creatorToken), 4);
+        _handoffGovernance(d, admin);
         vm.stopBroadcast();
+
+        _verify(d, admin, guardian);
+        if (vm.envOr("WRITE_DEPLOYMENT_MANIFEST", true)) _writeManifest(d);
+    }
+
+    function _handoffGovernance(Deployment memory d, address admin) internal {
+        address timelock = address(d.timelock);
+        bytes32 defaultAdmin = d.riskManager.DEFAULT_ADMIN_ROLE();
+
+        d.riskManager.grantRole(defaultAdmin, timelock);
+        d.riskManager.renounceRole(defaultAdmin, admin);
+
+        d.positionManager.grantRole(defaultAdmin, timelock);
+        d.positionManager.renounceRole(defaultAdmin, admin);
+
+        d.validator.grantRole(defaultAdmin, timelock);
+        d.validator.grantRole(d.validator.VALIDATOR_ADMIN_ROLE(), timelock);
+        d.validator.renounceRole(d.validator.VALIDATOR_ADMIN_ROLE(), admin);
+        d.validator.renounceRole(defaultAdmin, admin);
+
+        d.seniorVault.grantRole(defaultAdmin, timelock);
+        d.seniorVault.grantRole(d.seniorVault.MANAGER_ADMIN_ROLE(), timelock);
+        d.seniorVault.renounceRole(d.seniorVault.MANAGER_ADMIN_ROLE(), admin);
+        d.seniorVault.renounceRole(defaultAdmin, admin);
+
+        d.hedgeVault.grantRole(defaultAdmin, timelock);
+        d.hedgeVault.grantRole(d.hedgeVault.EPOCH_ADMIN_ROLE(), timelock);
+        d.hedgeVault.renounceRole(d.hedgeVault.EPOCH_ADMIN_ROLE(), admin);
+        d.hedgeVault.renounceRole(defaultAdmin, admin);
+
+        d.treasury.grantRole(defaultAdmin, timelock);
+        d.treasury.renounceRole(defaultAdmin, admin);
+    }
+
+    function _verify(Deployment memory d, address admin, address guardian) internal view {
+        address timelock = address(d.timelock);
+        bytes32 defaultAdmin = d.riskManager.DEFAULT_ADMIN_ROLE();
+        bool valid = !d.riskManager.mainnetEnabled()
+            && d.riskManager.hasRole(d.riskManager.RISK_ADMIN_ROLE(), timelock)
+            && d.riskManager.hasRole(d.riskManager.PAUSE_GUARDIAN_ROLE(), guardian)
+            && d.positionManager.hasRole(d.positionManager.ADAPTER_ADMIN_ROLE(), timelock)
+            && d.validator.hasRole(d.validator.VALIDATOR_ADMIN_ROLE(), timelock)
+            && d.seniorVault.hasRole(d.seniorVault.MANAGER_ADMIN_ROLE(), timelock)
+            && d.hedgeVault.hasRole(d.hedgeVault.EPOCH_ADMIN_ROLE(), timelock)
+            && d.treasury.hasRole(d.treasury.FEE_MANAGER_ROLE(), timelock)
+            && !d.riskManager.hasRole(defaultAdmin, admin) && !d.positionManager.hasRole(defaultAdmin, admin)
+            && !d.validator.hasRole(defaultAdmin, admin) && !d.seniorVault.hasRole(defaultAdmin, admin)
+            && !d.hedgeVault.hasRole(defaultAdmin, admin) && !d.treasury.hasRole(defaultAdmin, admin)
+            && address(d.seniorVault.positionManager()) == address(d.positionManager)
+            && address(d.hedgeVault.positionManager()) == address(d.positionManager)
+            && d.receipt.positionManager() == address(d.positionManager)
+            && d.positionManager.allowedAdapter(address(d.adapter)) && d.timelock.getMinDelay() == 1 days
+            && d.validator.validate(address(d.creatorToken), 4);
+        if (!valid) revert PostDeploymentInvariant();
+    }
+
+    function _writeManifest(Deployment memory d) internal {
+        string memory object = "baseSepolia";
+        vm.serializeUint(object, "chainId", block.chainid);
+        vm.serializeUint(object, "deploymentBlock", block.number);
+        vm.serializeAddress(object, "canonicalUsdc", BASE_SEPOLIA_USDC);
+        vm.serializeAddress(object, "zoraV4Hook", BASE_SEPOLIA_ZORA_V4_HOOK);
+        vm.serializeAddress(object, "creatorToken", address(d.creatorToken));
+        vm.serializeAddress(object, "adapter", address(d.adapter));
+        vm.serializeAddress(object, "rateModel", address(d.rateModel));
+        vm.serializeAddress(object, "riskManager", address(d.riskManager));
+        vm.serializeAddress(object, "validator", address(d.validator));
+        vm.serializeAddress(object, "seniorVault", address(d.seniorVault));
+        vm.serializeAddress(object, "hedgeVault", address(d.hedgeVault));
+        vm.serializeAddress(object, "receipt", address(d.receipt));
+        vm.serializeAddress(object, "positionManager", address(d.positionManager));
+        vm.serializeAddress(object, "treasury", address(d.treasury));
+        string memory json = vm.serializeAddress(object, "timelock", address(d.timelock));
+        vm.writeJson(json, "deployments/base-sepolia.json");
     }
 }
