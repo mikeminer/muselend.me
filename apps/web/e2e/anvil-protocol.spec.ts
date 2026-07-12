@@ -89,12 +89,13 @@ test.describe("Anvil protocol lifecycle", () => {
         functionName,
         args,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error(`${functionName} transaction reverted`);
       return hash;
     };
 
     const usdc = await deploy("MockERC20", ["USD Coin", "USDC", 6]);
-    const creator = await deploy("MockERC20", ["Creator", "CREATOR", 18]);
+    const creator = await deploy("MockZoraCreatorToken", [usdc.address, "0x0000000000000000000000000000000000000001"]);
     const adapter = await deploy("MockSwapAdapter", [parseUnits("10", 6)]);
     const rate = await deploy("InterestRateModel", [
       {
