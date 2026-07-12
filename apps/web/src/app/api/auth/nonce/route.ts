@@ -7,7 +7,7 @@ import { NONCE_COOKIE, nonceKey } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const context = requestContext(request, 10);
+  const context = await requestContext(request, 10);
   if (context.limited) return rateLimitResponse(context.requestId);
   if (!hasSameOrigin(request)) return apiError(context.requestId, 403, "INVALID_ORIGIN", "Origin rejected");
   try {

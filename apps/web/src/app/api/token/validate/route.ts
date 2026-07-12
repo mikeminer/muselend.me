@@ -6,7 +6,7 @@ import { apiError, parseBody, rateLimitResponse, requestContext } from "@/lib/ap
 import { tokenRequest } from "@/lib/api-schemas";
 
 export async function POST(request: Request) {
-  const context = requestContext(request);
+  const context = await requestContext(request);
   if (context.limited) return rateLimitResponse(context.requestId);
   const body = await parseBody(request, tokenRequest, context.requestId);
   if (body instanceof NextResponse) return body;

@@ -7,7 +7,7 @@ import { legalAcceptances } from "@/db/schema";
 import { readSession, validCsrf } from "@/lib/session";
 
 export async function POST(request: Request) {
-  const context = requestContext(request, 10);
+  const context = await requestContext(request, 10);
   if (context.limited) return rateLimitResponse(context.requestId);
   if (!hasSameOrigin(request)) return apiError(context.requestId, 403, "INVALID_ORIGIN", "Origin rejected");
   const body = await parseBody(request, acceptanceRequest, context.requestId);

@@ -38,6 +38,7 @@ for (const route of [
   "/app/borrow",
   "/app/lend",
   "/app/underwrite",
+  "/admin",
   "/risk",
   "/terms",
   "/privacy",

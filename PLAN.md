@@ -32,11 +32,14 @@ explicit owner gates.
 - [x] Build the Next.js App Router web application and bilingual content system.
 - [x] Implement public, borrower, lender, underwriter, markets, position, docs, risk,
   legal, and status surfaces.
-- [ ] Connect the admin console to deployed role checks and timelock transaction simulations.
+- [x] Connect the admin console to deployed role checks and pre-write simulations; it remains
+  fail-closed until verified deployment addresses are supplied.
 - [x] Add wallet connectivity, transaction lifecycle, direct-chain fallback, APIs,
   indexer/schema foundations, rate limiting, and security headers.
-- [ ] Connect production persistence, distributed rate limiting, and observability after
-  the owner provisions the required Vercel/Neon/Upstash resources.
+- [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
+  fail-closed behavior.
+- [ ] Connect production persistence and observability after the owner provisions the
+  required Vercel/Neon/Upstash resources.
 - [x] Add unit, accessibility, browser, and local-chain E2E coverage.
 
 ## Phase 4 — delivery

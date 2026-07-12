@@ -1,1 +1,9 @@
-import { ContentPage } from "@/components/content-page"; export default function Admin(){return <ContentPage eyebrow="Governance" title="Admin console unavailable" intro="Administrative actions require a connected wallet, verified on-chain role and transaction simulation. No contracts are configured yet." sections={[{title:"Safety boundary",body:"Normal users receive read-only access. Parameter, adapter and role changes must follow the configured timelock. Protected reserves cannot be swept."},{title:"Pause behavior",body:"A pause blocks new risk while preserving repayment, safe close, expiry settlement and withdrawals backed by available liquidity."}]}/>}
+import { AdminConsole } from "@/components/admin-console";
+import { PageHeading } from "@/components/page-heading";
+
+export default function Admin() {
+  return <>
+    <PageHeading eyebrow="Governance" title="Protocol administration" description="Read roles and bounded risk state directly from Base Sepolia. Writes require the matching on-chain role and a successful wallet-specific simulation." />
+    <AdminConsole />
+  </>;
+}
