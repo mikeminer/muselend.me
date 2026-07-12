@@ -31,16 +31,18 @@ contract MuseLendInvariant is StdInvariant, Test {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        senior = new MuseLendUSDCVault(usdc, admin, rate);
+        senior = new MuseLendUSDCVault(usdc, admin, rate, makeAddr("treasury"));
         junior = new MuseLendHedgeEpochVault(usdc, admin);
         MuseLendPositionReceipt receipt = new MuseLendPositionReceipt(admin);
-        MuseLendRiskManager risk = new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6);
+        MuseLendRiskManager risk =
+            new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6, 50);
         CreatorTokenValidator validator = new CreatorTokenValidator(admin);
-        manager = new MuseLendPositionManager(usdc, senior, junior, receipt, risk, validator, admin);
+        manager = new MuseLendPositionManager(
+            usdc, senior, junior, receipt, risk, validator, admin, admin, address(adapter), makeAddr("fees")
+        );
         senior.setPositionManager(address(manager));
         junior.setPositionManager(address(manager));
         receipt.setPositionManager(address(manager));
-        manager.setAdapter(address(adapter), true);
         validator.setCanonical(address(creator), 4);
         risk.setTokenConfig(
             address(creator),

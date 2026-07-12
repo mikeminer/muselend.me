@@ -10,7 +10,7 @@ contract MuseLendRiskManagerTest is Test {
     address token = makeAddr("token");
 
     function setUp() public {
-        risk = new MuseLendRiskManager(admin, admin, guardian, false, 1_000_000e6, 500_000e6);
+        risk = new MuseLendRiskManager(admin, admin, guardian, false, 1_000_000e6, 500_000e6, 50);
     }
 
     function validConfig() internal pure returns (MuseLendRiskManager.TokenConfig memory) {
@@ -61,5 +61,15 @@ contract MuseLendRiskManagerTest is Test {
         vm.prank(admin);
         vm.expectRevert(MuseLendRiskManager.InvalidRiskConfiguration.selector);
         risk.setGlobalCaps(0, 1);
+    }
+
+    function testOriginationFeeHasHardCap() public {
+        vm.prank(admin);
+        risk.setOriginationFee(200);
+        assertEq(risk.originationFeeBps(), 200);
+
+        vm.prank(admin);
+        vm.expectRevert(MuseLendRiskManager.InvalidRiskConfiguration.selector);
+        risk.setOriginationFee(201);
     }
 }

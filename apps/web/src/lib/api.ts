@@ -6,3 +6,12 @@ export function requestContext(request:Request,limit=30,windowMs=60_000){const r
 export function apiError(requestId:string,status:number,code:string,message:string,details?:unknown){return NextResponse.json({error:{code,message,details},requestId},{status,headers:{"cache-control":"no-store","x-request-id":requestId}})}
 export async function parseBody<T>(request:Request,schema:ZodType<T>,requestId:string):Promise<T|NextResponse>{try{const body=await request.json();return schema.parse(body)}catch(error){return apiError(requestId,400,"INVALID_REQUEST","Request validation failed",error instanceof ZodError?error.issues:undefined)}}
 export function rateLimitResponse(requestId:string){return apiError(requestId,429,"RATE_LIMITED","Too many requests")}
+export function hasSameOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}

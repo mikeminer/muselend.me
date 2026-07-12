@@ -33,6 +33,8 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
     uint256 public nextRequestId = 1;
     uint256 public nextRequestToProcess = 1;
     InterestRateModel public immutable rateModel;
+    address public immutable feeRecipient;
+    uint256 public protocolFeesPaid;
 
     struct WithdrawalRequest {
         address owner;
@@ -46,20 +48,27 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
     event PrincipalOriginated(
         uint256 indexed positionId, address indexed receiver, uint256 principal, uint256 debtShares
     );
-    event DebtRepaid(uint256 indexed positionId, uint256 principal, uint256 interest, uint256 debtShares);
+    event DebtRepaid(
+        uint256 indexed positionId,
+        uint256 principal,
+        uint256 interest,
+        uint256 protocolFee,
+        uint256 debtShares
+    );
     event WithdrawalQueued(
         uint256 indexed requestId, address indexed owner, address indexed receiver, uint256 shares
     );
     event WithdrawalClaimed(uint256 indexed requestId, uint256 shares, uint256 assets);
 
-    constructor(IERC20 usdc, address admin, InterestRateModel rateModel_)
+    constructor(IERC20 usdc, address admin, InterestRateModel rateModel_, address feeRecipient_)
         ERC20("MuseLend Senior USDC Vault", "msUSDC")
         ERC4626(usdc)
     {
-        if (address(rateModel_) == address(0)) revert InvalidRepayment();
+        if (address(rateModel_) == address(0) || feeRecipient_ == address(0)) revert InvalidRepayment();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MANAGER_ADMIN_ROLE, admin);
         rateModel = rateModel_;
+        feeRecipient = feeRecipient_;
         lastAccrual = uint40(block.timestamp);
     }
     modifier onlyPositionManager() {
@@ -142,7 +151,12 @@ contract MuseLendUSDCVault is ERC4626, AccessControl, ReentrancyGuard {
         totalPrincipalOutstanding -= principal;
         uint256 interest = amount - principal;
         realizedInterest += interest;
-        emit DebtRepaid(positionId, principal, interest, debtShares);
+        uint256 protocolFee = Math.mulDiv(interest, rateModel.reserveFactorBps(), 10_000);
+        if (protocolFee > 0) {
+            protocolFeesPaid += protocolFee;
+            IERC20(asset()).safeTransfer(feeRecipient, protocolFee);
+        }
+        emit DebtRepaid(positionId, principal, interest, protocolFee, debtShares);
     }
 
     /// @notice Escrows vault shares in a FIFO queue without iterating over global requests.

@@ -11,6 +11,7 @@ contract MuseLendRiskManager is AccessControl {
     uint16 public constant MAX_ADVANCE_RATE_BPS = 6000;
     uint16 public constant MAX_SENIOR_COVERAGE_BPS = 9000;
     uint16 public constant MAX_COVERAGE_CAP_BPS = 20_000;
+    uint16 public constant MAX_ORIGINATION_FEE_BPS = 200;
 
     error InvalidRiskConfiguration();
     error UnsupportedTerm();
@@ -34,6 +35,7 @@ contract MuseLendRiskManager is AccessControl {
     bool public immutable mainnetEnabled;
     uint128 public globalSeniorDebtCap;
     uint128 public globalJuniorCoverageCap;
+    uint16 public originationFeeBps;
     mapping(address token => TokenConfig) public tokenConfig;
     mapping(address token => mapping(uint32 term => uint16 premiumBps)) public premiumBpsByTerm;
 
@@ -41,6 +43,7 @@ contract MuseLendRiskManager is AccessControl {
     event TermUpdated(address indexed token, uint32 indexed term, uint16 premiumBps, bool allowed);
     event PauseUpdated(bool openingsPaused, bool depositsPaused);
     event GlobalCapsUpdated(uint128 seniorDebtCap, uint128 juniorCoverageCap);
+    event OriginationFeeUpdated(uint16 feeBps);
 
     constructor(
         address admin,
@@ -48,11 +51,13 @@ contract MuseLendRiskManager is AccessControl {
         address pauseGuardian,
         bool mainnetEnabled_,
         uint128 initialSeniorDebtCap,
-        uint128 initialJuniorCoverageCap
+        uint128 initialJuniorCoverageCap,
+        uint16 initialOriginationFeeBps
     ) {
         if (
             admin == address(0) || riskAdmin == address(0) || pauseGuardian == address(0)
                 || initialSeniorDebtCap == 0 || initialJuniorCoverageCap == 0
+                || initialOriginationFeeBps > MAX_ORIGINATION_FEE_BPS
         ) {
             revert InvalidRiskConfiguration();
         }
@@ -62,6 +67,7 @@ contract MuseLendRiskManager is AccessControl {
         mainnetEnabled = mainnetEnabled_;
         globalSeniorDebtCap = initialSeniorDebtCap;
         globalJuniorCoverageCap = initialJuniorCoverageCap;
+        originationFeeBps = initialOriginationFeeBps;
     }
 
     /// @notice Sets protocol-wide exposure limits. The role is assigned to the governance timelock.
@@ -73,6 +79,12 @@ contract MuseLendRiskManager is AccessControl {
         globalSeniorDebtCap = seniorDebtCap;
         globalJuniorCoverageCap = juniorCoverageCap;
         emit GlobalCapsUpdated(seniorDebtCap, juniorCoverageCap);
+    }
+
+    function setOriginationFee(uint16 feeBps) external onlyRole(RISK_ADMIN_ROLE) {
+        if (feeBps > MAX_ORIGINATION_FEE_BPS) revert InvalidRiskConfiguration();
+        originationFeeBps = feeBps;
+        emit OriginationFeeUpdated(feeBps);
     }
 
     function setTokenConfig(address token, TokenConfig calldata config_) external onlyRole(RISK_ADMIN_ROLE) {

@@ -15,6 +15,8 @@ jobs:
         with: { version: 10.25.0 }
       - uses: actions/setup-node@v4
         with: { node-version: 20.19.0, cache: pnpm }
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: v1.7.1 }
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint --filter='!@muselend/contracts'
       - run: pnpm typecheck --filter='!@muselend/contracts'
@@ -22,7 +24,10 @@ jobs:
       - run: pnpm build --filter='!@muselend/contracts'
       - run: pnpm audit --audit-level high
       - run: pnpm --filter @muselend/web exec playwright install --with-deps chromium
+      - working-directory: packages/contracts
+        run: forge build
       - run: pnpm --filter @muselend/web test:e2e
+        env: { RUN_ANVIL_E2E: "1" }
   contracts:
     runs-on: ubuntu-latest
     steps:

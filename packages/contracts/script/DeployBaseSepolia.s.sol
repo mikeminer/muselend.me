@@ -2,6 +2,7 @@
 pragma solidity 0.8.35;
 import { Script } from "forge-std/Script.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { InterestRateModel } from "../src/InterestRateModel.sol";
 import { MuseLendRiskManager } from "../src/MuseLendRiskManager.sol";
 import { CreatorTokenValidator } from "../src/CreatorTokenValidator.sol";
@@ -29,6 +30,7 @@ contract DeployBaseSepolia is Script {
         MuseLendPositionReceipt receipt;
         MuseLendPositionManager positionManager;
         ProtocolTreasury treasury;
+        TimelockController timelock;
     }
 
     function run() external returns (Deployment memory d) {
@@ -37,10 +39,14 @@ contract DeployBaseSepolia is Script {
             revert InvalidCanonicalUsdc();
         }
         address admin = vm.envAddress("TESTNET_ADMIN");
-        address riskAdmin = vm.envAddress("TESTNET_RISK_ADMIN");
+        address timelockProposer = vm.envAddress("TESTNET_TIMELOCK_PROPOSER");
         address guardian = vm.envAddress("TESTNET_PAUSE_GUARDIAN");
-        address feeManager = vm.envAddress("TESTNET_FEE_MANAGER");
         vm.startBroadcast(admin);
+        address[] memory proposers = new address[](1);
+        proposers[0] = timelockProposer;
+        address[] memory executors = new address[](1);
+        executors[0] = address(0);
+        d.timelock = new TimelockController(1 days, proposers, executors, address(0));
         d.creatorToken = new MockERC20("Mock Zora Creator Token", "mCREATOR", 18);
         d.adapter = new MockSwapAdapter(10e6);
         d.rateModel = new InterestRateModel(
@@ -48,9 +54,13 @@ contract DeployBaseSepolia is Script {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        d.riskManager = new MuseLendRiskManager(admin, riskAdmin, guardian, false, 250_000e6, 250_000e6);
+        d.riskManager =
+            new MuseLendRiskManager(admin, address(d.timelock), guardian, false, 250_000e6, 250_000e6, 50);
+        d.treasury = new ProtocolTreasury(IERC20Metadata(BASE_SEPOLIA_USDC), admin, address(d.timelock));
         d.validator = new CreatorTokenValidator(admin);
-        d.seniorVault = new MuseLendUSDCVault(IERC20Metadata(BASE_SEPOLIA_USDC), admin, d.rateModel);
+        d.seniorVault = new MuseLendUSDCVault(
+            IERC20Metadata(BASE_SEPOLIA_USDC), admin, d.rateModel, address(d.treasury)
+        );
         d.hedgeVault = new MuseLendHedgeEpochVault(IERC20Metadata(BASE_SEPOLIA_USDC), admin);
         d.receipt = new MuseLendPositionReceipt(admin);
         d.positionManager = new MuseLendPositionManager(
@@ -60,13 +70,14 @@ contract DeployBaseSepolia is Script {
             d.receipt,
             d.riskManager,
             d.validator,
-            admin
+            admin,
+            address(d.timelock),
+            address(d.adapter),
+            address(d.treasury)
         );
-        d.treasury = new ProtocolTreasury(IERC20Metadata(BASE_SEPOLIA_USDC), admin, feeManager);
         d.seniorVault.setPositionManager(address(d.positionManager));
         d.hedgeVault.setPositionManager(address(d.positionManager));
         d.receipt.setPositionManager(address(d.positionManager));
-        d.positionManager.setAdapter(address(d.adapter), true);
         d.validator.setCanonical(address(d.creatorToken), 4);
         vm.stopBroadcast();
     }

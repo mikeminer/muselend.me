@@ -10,6 +10,7 @@ interface ISwapAdapter {
         uint24 fee;
         int24 tickSpacing;
         address hook;
+        uint256 minHopPriceX36;
     }
     function sellExactInput(Route calldata route, uint256 amountIn, uint256 minUsdcOut, uint256 deadline)
         external

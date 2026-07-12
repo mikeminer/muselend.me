@@ -1,0 +1,48 @@
+name: Vercel Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.25.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.19.0, cache: pnpm }
+      - name: Report unconfigured preview gate
+        if: env.VERCEL_TOKEN == ''
+        run: echo "Vercel preview skipped until repository deployment secrets are configured."
+      - name: Pull preview settings
+        if: env.VERCEL_TOKEN != ''
+        run: pnpm dlx vercel@50.28.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Build preview artifact
+        if: env.VERCEL_TOKEN != ''
+        run: pnpm dlx vercel@50.28.0 build --token="$VERCEL_TOKEN"
+      - name: Deploy preview artifact
+        if: env.VERCEL_TOKEN != ''
+        id: deploy
+        run: echo "url=$(pnpm dlx vercel@50.28.0 deploy --prebuilt --token="$VERCEL_TOKEN")" >> "$GITHUB_OUTPUT"
+      - uses: actions/github-script@v7
+        if: env.VERCEL_TOKEN != ''
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `MuseLend preview: ${process.env.PREVIEW_URL}`,
+            });

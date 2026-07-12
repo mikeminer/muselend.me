@@ -1,7 +1,7 @@
 # MuseLend V1 accounting specification
 
-> Status: pre-implementation specification. Testnet parameters are illustrative and are
-> not a mainnet risk endorsement.
+> Status: implemented for the Base Sepolia candidate. Testnet parameters are illustrative
+> and are not a mainnet risk endorsement.
 
 ## 1. Units and rounding
 
@@ -55,7 +55,10 @@ borrower receives:
 netBorrowerProceeds = L - originationFee - hedgePremium - protocolFee
 ```
 
-Every deduction is computed separately and emitted. A negative result reverts.
+Every deduction is computed separately, stored or emitted, and paid only after successful
+origination. The origination fee is `ceil(L * originationFeeBps / 10_000)`, is capped at
+2% on-chain, does not become debt, and is transferred directly to `ProtocolTreasury`.
+A negative result reverts.
 
 ## 4. Interest index
 
@@ -90,6 +93,16 @@ senior-vault receivable.
 Accrued interest is tracked separately from cash. ERC-4626 `totalAssets` must not treat
 uncollectible or merely projected interest as freely withdrawable liquidity. Withdraw
 and redeem limits are based on actual available cash after protected obligations.
+
+At repayment, the configured reserve factor applies only to realized interest:
+
+```text
+protocolInterestFee = floor(realizedInterest * reserveFactorBps / 10_000)
+lenderInterest = realizedInterest - protocolInterestFee
+```
+
+The protocol portion is transferred to `ProtocolTreasury` in the same transaction and
+therefore never appears in lender `totalAssets`. Principal is never subject to the fee.
 
 ## 5. Settlement waterfall
 

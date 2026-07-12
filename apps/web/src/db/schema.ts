@@ -114,24 +114,41 @@ export const quoteRequests = pgTable("quote_requests", {
   createdAt,
 });
 
-export const riskAcknowledgements = pgTable("risk_acknowledgements", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  chainId: integer("chain_id").notNull(),
-  wallet: text("wallet").notNull(),
-  version: text("version").notNull(),
-  signature: text("signature").notNull(),
-  acceptedAt: createdAt,
-});
+export const riskAcknowledgements = pgTable(
+  "risk_acknowledgements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    wallet: text("wallet").notNull(),
+    version: text("version").notNull(),
+    signature: text("signature").notNull(),
+    acceptedAt: createdAt,
+  },
+  (table) => [
+    uniqueIndex("risk_ack_wallet_version_idx").on(table.chainId, table.wallet, table.version),
+  ],
+);
 
-export const legalAcceptances = pgTable("legal_acceptances", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  chainId: integer("chain_id").notNull(),
-  wallet: text("wallet").notNull(),
-  document: text("document").notNull(),
-  version: text("version").notNull(),
-  signature: text("signature").notNull(),
-  acceptedAt: createdAt,
-});
+export const legalAcceptances = pgTable(
+  "legal_acceptances",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    wallet: text("wallet").notNull(),
+    document: text("document").notNull(),
+    version: text("version").notNull(),
+    signature: text("signature").notNull(),
+    acceptedAt: createdAt,
+  },
+  (table) => [
+    uniqueIndex("legal_acceptance_wallet_version_idx").on(
+      table.chainId,
+      table.wallet,
+      table.document,
+      table.version,
+    ),
+  ],
+);
 
 export const notificationPreferences = pgTable("notification_preferences", {
   wallet: text("wallet").primaryKey(),

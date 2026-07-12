@@ -17,7 +17,7 @@ contract MuseLendVaultQueueTest is Test {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        vault = new MuseLendUSDCVault(usdc, address(this), rate);
+        vault = new MuseLendUSDCVault(usdc, address(this), rate, makeAddr("treasury"));
         vault.setPositionManager(address(this));
         usdc.mint(lender, 1000e6);
         vm.startPrank(lender);

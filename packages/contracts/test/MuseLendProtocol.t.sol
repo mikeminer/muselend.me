@@ -27,6 +27,7 @@ contract MuseLendProtocolTest is Test {
     address borrower = makeAddr("borrower");
     address lender = makeAddr("lender");
     address underwriter = makeAddr("underwriter");
+    address treasury = makeAddr("treasury");
     ISwapAdapter.Route route;
 
     function setUp() public {
@@ -38,17 +39,18 @@ contract MuseLendProtocolTest is Test {
                 uint96(2e25), uint96(1e26), uint96(68e25), uint96(8e26), uint96(8e26), 1000
             )
         );
-        senior = new MuseLendUSDCVault(usdc, admin, rate);
+        senior = new MuseLendUSDCVault(usdc, admin, rate, treasury);
         junior = new MuseLendHedgeEpochVault(usdc, admin);
         receipt = new MuseLendPositionReceipt(admin);
-        risk = new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6);
+        risk = new MuseLendRiskManager(admin, admin, admin, false, 1_000_000e6, 500_000e6, 50);
         validator = new CreatorTokenValidator(admin);
-        manager = new MuseLendPositionManager(usdc, senior, junior, receipt, risk, validator, admin);
+        manager = new MuseLendPositionManager(
+            usdc, senior, junior, receipt, risk, validator, admin, admin, address(adapter), treasury
+        );
         vm.startPrank(admin);
         senior.setPositionManager(address(manager));
         junior.setPositionManager(address(manager));
         receipt.setPositionManager(address(manager));
-        manager.setAdapter(address(adapter), true);
         validator.setCanonical(address(creator), 4);
         risk.setTokenConfig(
             address(creator),
@@ -79,7 +81,9 @@ contract MuseLendProtocolTest is Test {
         vm.warp(block.timestamp + 11);
         creator.mint(borrower, 1_000e18);
         usdc.mint(address(adapter), 1_000_000e6);
-        route = ISwapAdapter.Route(address(creator), address(usdc), bytes32(uint256(1)), 3000, 60, address(0));
+        route = ISwapAdapter.Route(
+            address(creator), address(usdc), bytes32(uint256(1)), 3000, 60, address(0), 1
+        );
     }
 
     function open() internal returns (uint256) {
@@ -128,18 +132,26 @@ contract MuseLendProtocolTest is Test {
             address owner,,,
             uint128 amount,
             uint128 proceeds,
-            uint128 principal,,,,,,,,,,
+            uint128 principal,,,
+            uint128 juniorCoverage,
+            uint128 premium,
+            uint128 originationFee,,,,,,
             MuseLendPositionManager.State state
         ) = manager.positions(id);
         assertEq(owner, borrower);
         assertEq(amount, 100e18);
         assertEq(proceeds, 1000e6);
         assertEq(principal, 600e6);
+        assertEq(juniorCoverage, 500e6);
+        assertEq(premium, 12_500_000);
+        assertEq(originationFee, 3_000_000);
+        assertEq(usdc.balanceOf(borrower), 584_500_000);
+        assertEq(usdc.balanceOf(treasury), originationFee);
         assertEq(uint256(state), uint256(MuseLendPositionManager.State.Open));
         assertEq(manager.totalReservedUsdc(), 1000e6);
         assertEq(receipt.ownerOf(id), borrower);
         assertEq(senior.totalPrincipalOutstanding(), 600e6);
-        assertEq(junior.totalLockedCoverage(), 500e6);
+        assertEq(junior.totalLockedCoverage(), juniorCoverage);
     }
 
     function testGlobalSeniorDebtCapRejectsOrigination() public {
@@ -191,7 +203,9 @@ contract MuseLendProtocolTest is Test {
         manager.settleExpiredPosition(id);
         assertGt(usdc.balanceOf(address(senior)), before);
         assertEq(manager.totalReservedUsdc(), 0);
-        (,,,,,,,,,,,,,,, MuseLendPositionManager.State state) = manager.positions(id);
+        assertGt(usdc.balanceOf(treasury), 0);
+        assertEq(usdc.balanceOf(treasury), 3_000_000 + senior.protocolFeesPaid());
+        (,,,,,,,,,,,,,,,, MuseLendPositionManager.State state) = manager.positions(id);
         assertEq(uint256(state), uint256(MuseLendPositionManager.State.Defaulted));
     }
 }

@@ -16,7 +16,7 @@ contract ProtocolHandler is Test {
         manager = manager_;
         creator = creator_;
         adapter = adapter_;
-        route = ISwapAdapter.Route(address(creator_), usdc_, bytes32(uint256(1)), 3000, 60, address(0));
+        route = ISwapAdapter.Route(address(creator_), usdc_, bytes32(uint256(1)), 3000, 60, address(0), 1);
     }
 
     function open(uint256 seed, uint96 rawAmount) external {
@@ -40,7 +40,7 @@ contract ProtocolHandler is Test {
                 route
             )
         ) {
-            (,,,,,,,, uint128 juniorCoverage,,,,,,,) = manager.positions(expectedId);
+            (,,,,,,,, uint128 juniorCoverage,,,,,,,,) = manager.positions(expectedId);
             expectedJuniorCoverage += juniorCoverage;
         } catch { }
         vm.stopPrank();

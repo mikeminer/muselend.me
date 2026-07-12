@@ -14,10 +14,10 @@ slither . --foundry-out-directory out --filter-paths "lib" --fail-high
 
 - High: 0
 - Medium: 0
-- Low: 9
+- Low: 10
 - Informational: 1
 
-The remaining low-severity findings are timestamp comparisons that implement explicit deadlines,
+The remaining low-severity findings are timestamp comparisons that implement explicit swap deadlines,
 maturities, grace periods, and hedge epochs. Block producers can influence timestamps only within a
 small range; no check relies on exact-second equality and all economic windows are materially longer.
 
@@ -36,6 +36,10 @@ scoped to the four affected entrypoints, with these compensating controls:
 - the swap adapter is allowlisted and has a typed, narrow interface;
 - adapter outputs must match independently observed ERC-20 balance deltas;
 - debt shares are cleared before the external repayment transfer.
+
+The same detector is locally suppressed in `UniswapV4SwapAdapter` for its internal exact-input and
+exact-output balance-delta verification. All three external swap functions are `nonReentrant`, accept
+calls only from the immutable Position Manager, and revoke Permit2 allowances after settlement.
 
 The zero-equality suppression in `previewBorrowIndex` is also local: zero elapsed time and zero debt
 shares are exact accounting boundaries, not attacker-controlled equality assumptions.

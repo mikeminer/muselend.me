@@ -46,6 +46,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint128 coverageCap;
         uint128 juniorCoverage;
         uint128 premium;
+        uint128 originationFee;
         uint40 openedAt;
         uint40 maturity;
         uint32 term;
@@ -83,6 +84,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
     MuseLendPositionReceipt public immutable receipt;
     MuseLendRiskManager public immutable riskManager;
     CreatorTokenValidator public immutable tokenValidator;
+    address public immutable feeRecipient;
     uint256 public nextPositionId = 1;
     uint256 public totalReservedUsdc;
     mapping(uint256 => Position) public positions;
@@ -100,7 +102,8 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint256 principal,
         uint256 coverageCap,
         uint256 juniorCoverage,
-        uint256 premium
+        uint256 premium,
+        uint256 originationFee
     );
     event PositionRepaid(uint256 indexed positionId, uint256 amount);
     event PositionClosed(
@@ -117,16 +120,26 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         MuseLendPositionReceipt receipt_,
         MuseLendRiskManager riskManager_,
         CreatorTokenValidator validator_,
-        address admin
+        address admin,
+        address adapterAdmin,
+        address initialAdapter,
+        address feeRecipient_
     ) {
+        if (admin == address(0) || adapterAdmin == address(0) || initialAdapter == address(0)) {
+            revert InvalidAdapter();
+        }
+        if (feeRecipient_ == address(0)) revert InvalidAmount();
         usdc = usdc_;
         seniorVault = seniorVault_;
         hedgeVault = hedgeVault_;
         receipt = receipt_;
         riskManager = riskManager_;
         tokenValidator = validator_;
+        feeRecipient = feeRecipient_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ADAPTER_ADMIN_ROLE, admin);
+        _grantRole(ADAPTER_ADMIN_ROLE, adapterAdmin);
+        allowedAdapter[initialAdapter] = true;
+        emit AdapterUpdated(initialAdapter, true);
     }
 
     function setAdapter(address adapter, bool allowed) external onlyRole(ADAPTER_ADMIN_ROLE) {
@@ -188,7 +201,9 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         uint40 maturity = uint40(block.timestamp + p.term);
         hedgeVault.lockCoverage(p.epochId, id, junior, uint40(uint256(maturity) + GRACE_PERIOD));
         uint256 premium = Math.mulDiv(junior, premiumBps, BPS, Math.Rounding.Ceil);
-        if (premium >= p.principal) revert CoverageViolation();
+        uint256 originationFee =
+            Math.mulDiv(p.principal, riskManager.originationFeeBps(), BPS, Math.Rounding.Ceil);
+        if (premium + originationFee >= p.principal) revert CoverageViolation();
         uint256 shares = seniorVault.originate(id, address(this), p.principal);
         if (
             shares > type(uint128).max || cap > type(uint128).max || junior > type(uint128).max
@@ -198,7 +213,8 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         }
         usdc.safeTransfer(address(hedgeVault), premium);
         hedgeVault.recordPremium(p.epochId, id, premium);
-        usdc.safeTransfer(msg.sender, p.principal - premium);
+        if (originationFee > 0) usdc.safeTransfer(feeRecipient, originationFee);
+        usdc.safeTransfer(msg.sender, p.principal - premium - originationFee);
         positions[id] = Position(
             msg.sender,
             p.creatorToken,
@@ -210,6 +226,7 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
             cap.toUint128(),
             junior.toUint128(),
             premium.toUint128(),
+            originationFee.toUint128(),
             uint40(block.timestamp),
             maturity,
             p.term,
@@ -222,7 +239,16 @@ contract MuseLendPositionManager is AccessControl, ReentrancyGuard {
         walletExposure[msg.sender] += proceeds;
         receipt.mint(msg.sender, id);
         emit PositionOpened(
-            id, msg.sender, p.creatorToken, p.amount, proceeds, p.principal, cap, junior, premium
+            id,
+            msg.sender,
+            p.creatorToken,
+            p.amount,
+            proceeds,
+            p.principal,
+            cap,
+            junior,
+            premium,
+            originationFee
         );
     }
     // slither-disable-end reentrancy-balance,reentrancy-no-eth,reentrancy-benign
