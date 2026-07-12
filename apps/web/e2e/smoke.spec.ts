@@ -54,6 +54,12 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await page.goto("/app/underwrite");
   await expect(page.getByRole("heading", { level: 1, name: "Sottoscrivi un’epoca fissa" })).toBeVisible();
   await expect(page.getByText("Posizione nell’epoca", { exact: true })).toBeVisible();
+  await page.goto("/app/markets");
+  await expect(page.getByRole("heading", { level: 1, name: "Mercati creator-token abilitati" })).toBeVisible();
+  await expect(page.getByText("Deployment testnet non configurato", { exact: true })).toBeVisible();
+  await page.goto("/app/positions");
+  await expect(page.getByRole("heading", { level: 1, name: "Posizioni sintetiche con cap" })).toBeVisible();
+  await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
 });
 
 for (const route of [

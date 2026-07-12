@@ -2,6 +2,7 @@
 
 import { MuseLendPositionManagerAbi, MuseLendRiskManagerAbi } from "@muselend/abis";
 import { formatUnits, parseAbi } from "viem";
+import { useTranslations } from "next-intl";
 import { useAccount, useReadContract } from "wagmi";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
 import { EmptyState } from "@/components/empty-state";
@@ -24,6 +25,7 @@ type RiskConfig = {
 };
 
 export function MarketsPanel() {
+  const t = useTranslations("MarketsPanel");
   const { chainId } = useAccount();
   const token = contracts.creatorToken;
   const risk = contracts.riskManager;
@@ -40,20 +42,20 @@ export function MarketsPanel() {
   const exposure = exposureRead.data ?? 0n;
   const terms = [[7, term7.data], [14, term14.data], [30, term30.data]].flatMap(([days, premium]) => typeof premium === "number" ? [{ days: days as number, premium }] : []);
 
-  if (!deploymentConfigured) return <EmptyState title="No testnet deployment configured" text="Markets appear only after a verified Creator Token and RiskManager are published from the deployment manifest." />;
-  if (chainId !== 84532) return <EmptyState title="Switch to Base Sepolia" text="Mainnet market configuration remains disabled." />;
-  if (configuration.isLoading || exposureRead.isLoading) return <p className="text-sm text-muted-foreground">Reading market configuration from Base Sepolia…</p>;
-  if (!config?.enabled) return <EmptyState title="Market disabled" text="The configured Creator Token is not enabled by on-chain governance." />;
+  if (!deploymentConfigured) return <EmptyState title={t("deploymentTitle")} text={t("deploymentText")} />;
+  if (chainId !== 84532) return <EmptyState title={t("networkTitle")} text={t("networkText")} />;
+  if (configuration.isLoading || exposureRead.isLoading) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
+  if (!config?.enabled) return <EmptyState title={t("disabledTitle")} text={t("disabledText")} />;
 
   return <Card>
-    <CardHeader className="flex-row items-start justify-between gap-4"><div><CardTitle>{name.data ?? "Creator Token"}</CardTitle><p className="mt-1 font-mono text-sm text-muted-foreground">{symbol.data ?? "—"} · {short(token)}</p></div><Badge variant="outline">Risk tier {config.riskTier}</Badge></CardHeader>
+    <CardHeader className="flex-row items-start justify-between gap-4"><div><CardTitle>{name.data ?? t("creatorToken")}</CardTitle><p className="mt-1 font-mono text-sm text-muted-foreground">{symbol.data ?? "—"} · {short(token)}</p></div><Badge variant="outline">{t("riskTier", { tier: config.riskTier })}</Badge></CardHeader>
     <CardContent className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric label="Current exposure" value={money(exposure)} detail={`of ${money(config.maximumTokenExposureUsdc)}`} />
-      <Metric label="Position range" value={`${money(config.minimumPositionUsdc)}–${money(config.maximumPositionUsdc)}`} detail="Realized sale proceeds" />
-      <Metric label="Advance / senior coverage" value={`${bps(config.advanceRateBps)} / ${bps(config.seniorCoverageBps)}`} detail={`Synthetic cap ${bps(config.coverageCapBps)}`} />
-      <Metric label="Allowed terms" value={terms.length ? terms.map((term) => `${term.days}d`).join(" · ") : "None"} detail={terms.map((term) => `${term.days}d premium ${bps(term.premium)}`).join(" · ")} />
-      <Metric label="Max price impact" value={bps(config.maximumPriceImpactBps)} detail={`Canonical Zora version ${config.canonicalZoraVersion}`} />
-      <Metric label="Per-wallet exposure" value={money(config.maximumWalletExposureUsdc)} detail="Hard on-chain cap" />
+      <Metric label={t("exposure")} value={money(exposure)} detail={t("exposureDetail", { maximum: money(config.maximumTokenExposureUsdc) })} />
+      <Metric label={t("range")} value={`${money(config.minimumPositionUsdc)}–${money(config.maximumPositionUsdc)}`} detail={t("rangeDetail")} />
+      <Metric label={t("coverage")} value={`${bps(config.advanceRateBps)} / ${bps(config.seniorCoverageBps)}`} detail={t("coverageDetail", { cap: bps(config.coverageCapBps) })} />
+      <Metric label={t("terms")} value={terms.length ? terms.map((term) => t("days", { days: term.days })).join(" · ") : t("none")} detail={terms.map((term) => t("premium", { days: term.days, premium: bps(term.premium) })).join(" · ")} />
+      <Metric label={t("priceImpact")} value={bps(config.maximumPriceImpactBps)} detail={t("version", { version: config.canonicalZoraVersion })} />
+      <Metric label={t("walletExposure")} value={money(config.maximumWalletExposureUsdc)} detail={t("hardCap")} />
     </CardContent>
   </Card>;
 }
