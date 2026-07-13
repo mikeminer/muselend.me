@@ -41,5 +41,8 @@ governance is handed to the one-day timelock, the separate pause guardian is act
 mainnet remains disabled. Public addresses are recorded in
 `packages/contracts/deployments/base-sepolia.json` and `deployments/base-sepolia.json`.
 
-Vercel production, persistence integrations and DNS remain operator-account gates. See
-`PLAN.md`, `docs/DEPLOYMENT.md`, and `docs/LAUNCH_GATES.md`.
+The production web build is live at `https://muselend.vercel.app` with the verified
+Base Sepolia addresses. Its read-only health and pool endpoints are operational; transaction
+readiness remains fail-closed until persistence, Redis and WalletConnect are provisioned.
+Connecting `muselend.me`, external services and any mainnet/legal activation remain explicit
+owner gates. See `PLAN.md`, `docs/DEPLOYMENT.md`, and `docs/LAUNCH_GATES.md`.

@@ -62,8 +62,10 @@ explicit owner gates.
       record all 33 successful receipts, the deployment block and governance handoff.
 - [x] Simulate the complete guarded deployment against the public Base Sepolia RPC without
       broadcasting; verify canonical USDC, governance handoff and post-deployment invariants.
-- [ ] Configure Vercel testnet mode, preview, production, and then connect the already
-      owned domain after verifying the intended Vercel scope and DNS authority.
+- [x] Configure and deploy Vercel production in guarded Base Sepolia mode with verified
+      contract addresses, independent runtime secrets and a successful remote health check.
+- [ ] Connect the already owned domain after explicit DNS authorization; provision
+      persistence, Redis and WalletConnect only after the applicable external-service gates.
 - [ ] Keep `MAINNET_ENABLED=false` until every documented launch gate is independently met.
 
 ## Explicit stop gates

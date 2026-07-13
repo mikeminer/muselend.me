@@ -86,3 +86,14 @@ on Sourcify. Read-only post-deployment checks confirmed canonical USDC decimals,
 timelock, role handoff, separately held pause-guardian role, revoked deployer default-admin roles,
 manager wiring, adapter allowlisting, creator-token validation and `mainnetEnabled == false`.
 The public addresses and transaction hashes are recorded in the repository deployment manifests.
+
+## Vercel deployment record
+
+On 2026-07-13, commit `03967a4` passed both CI jobs and was promoted to the guarded Vercel
+production deployment at `https://muselend.vercel.app`. The runtime uses the verified Base
+Sepolia manifest, keeps both mainnet flags disabled and reports contract and Vercel readiness.
+Read-only health, pool-snapshot and direct-chain product paths were exercised after promotion.
+
+`readyForTransactions` intentionally remains `false` until a production database, Redis and
+WalletConnect project are provisioned and verified. The custom `muselend.me` domain is not yet
+attached: registrar or DNS changes remain an explicit owner gate.
