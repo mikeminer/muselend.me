@@ -47,6 +47,12 @@ governance is handed to the one-day timelock, the separate pause guardian is act
 mainnet remains disabled. Public addresses are recorded in
 `packages/contracts/deployments/base-sepolia.json` and `deployments/base-sepolia.json`.
 
+The isolated Creator Token mirror factory is deployed separately at
+`0x048a7F340962f45B676440B66C0806347867575E` (block `44,082,475`) and has exact-match
+Sourcify verification. Its public deployment record is stored in
+`packages/contracts/deployments/base-sepolia-mirror.json` and
+`deployments/base-sepolia-mirror.json`.
+
 The production web build is live at `https://muselend.vercel.app` with the verified
 Base Sepolia addresses. Its read-only health and pool endpoints are operational; transaction
 readiness remains fail-closed until persistence, Redis and WalletConnect are provisioned.

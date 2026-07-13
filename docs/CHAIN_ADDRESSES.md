@@ -30,6 +30,12 @@ at commit `0b6229d7fac875084477de78aa5e41ba96cec96a`. The Base Sepolia file publ
 Content Coin V3/V4 implementations but no Creator Coin implementation, so this repository
 does not treat that network as canonical Creator Coin support.
 
+The MuseLend testnet mirror factory at
+`0x048a7F340962f45B676440B66C0806347867575E` is therefore deliberately not listed as a
+canonical Zora deployment. It creates disclosed Base Sepolia faucet tokens after an attested
+Base balance read; these mirrors are not bridged assets and are not collateral markets unless
+governance registers them separately.
+
 No Zora Creator Coin V4 factory/validator or concrete V4 pool route is approved for Base
 Sepolia in this repository. `UniswapV4SwapAdapter` is implemented and tested against the
 official v2.1.1 action encoding, but remains undeployed and cannot trade until governance

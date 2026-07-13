@@ -108,6 +108,20 @@ timelock, role handoff, separately held pause-guardian role, revoked deployer de
 manager wiring, adapter allowlisting, creator-token validation and `mainnetEnabled == false`.
 The public addresses and transaction hashes are recorded in the repository deployment manifests.
 
+### Creator Token mirror deployment record
+
+On 2026-07-13, the isolated `BaseCreatorTokenMirrorFactory` was deployed at Base Sepolia
+block `44,082,475` from commit `a8b7b3e`. Transaction
+`0xf0bd176f5054472acdac237e33873eea06335b93878c0ff3ac439564ef20eb32` succeeded and
+created factory `0x048a7F340962f45B676440B66C0806347867575E`. The transaction used
+`0.000013923606830767 ETH`; the funded deployer retained `0.099867144138772184 ETH`.
+
+Post-deployment calls confirmed source chain `8453`, destination chain `84532`, native Base
+Sepolia USDC, the configured Sepolia V4 hook and attester
+`0x9324018e1F22b69612d2B783b8Bb108bfE0aCEAA`. Runtime bytecode is 9,700 bytes and the
+factory has exact-match Sourcify verification. The sensitive signing key exists only as the
+write-only Vercel production variable `TESTNET_CLAIM_ATTESTER_PRIVATE_KEY`.
+
 ## Vercel deployment record
 
 On 2026-07-13, commit `03967a4` passed both CI jobs and was promoted to the guarded Vercel
