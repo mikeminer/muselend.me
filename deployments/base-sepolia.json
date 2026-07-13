@@ -1,0 +1,33 @@
+{
+  "chainId": 84532,
+  "network": "base-sepolia",
+  "mainnetEnabled": false,
+  "deploymentCommit": "ded4bdd97842f1e6ed915bf629640fe3131ca3b0",
+  "deploymentBlock": 44078371,
+  "deploymentTransaction": "0x0aa97770ebf3e65d9433f4cc87fb4a369f518fd104342097e584fc6248636511",
+  "transactionCount": 33,
+  "successfulReceiptCount": 33,
+  "sourceVerification": "sourcify-exact-match",
+  "contracts": {
+    "timelock": "0xf4c4A1AE315602dd32C91c685599D082FA3E600e",
+    "mockCreatorToken": "0x608fA274FB6C982B5555deCE21a78008553836e2",
+    "mockSwapAdapter": "0x6bf9C8c1806e11c8a2b77D8CD2Dfe6B42B5720cD",
+    "interestRateModel": "0x1a22D59BF66f3469a0AaB4626407b7639a9DbB20",
+    "riskManager": "0x5F6814c42Dc6762B954447380eC2cB660e38a652",
+    "protocolTreasury": "0xEFD68D21277f0BdF135908f9E48f7f60B2c4d77a",
+    "creatorTokenValidator": "0xF92AE2D6440CDbABb9623fbd2Eff8F13D55B245c",
+    "seniorVault": "0x29553F8BB0B97b34be10CCe1C6a0a5f9752537f8",
+    "hedgeEpochVault": "0x4Bd0537F6429731280359dD171B2c4CfEd8E9957",
+    "positionReceipt": "0xA747b7Cc86c628449b8FdC7C1d9C77b4499514A2",
+    "positionManager": "0xD5a2b0C7f695349C6a670543563d120A1c4eE72f"
+  },
+  "roles": {
+    "testnetAdmin": "0xFdC4232d77A3A2Bf69D520A2069Bb8ee5Edadef1",
+    "timelockProposer": "0xFdC4232d77A3A2Bf69D520A2069Bb8ee5Edadef1",
+    "pauseGuardian": "0x3074a77986546b16Be4eED2ADB85A74753552F42",
+    "riskAdmin": "timelock",
+    "adapterAdmin": "timelock",
+    "feeManager": "timelock"
+  },
+  "verified": true
+}

@@ -35,7 +35,11 @@ Never provide a seed phrase or commit a private key.
 
 ## Current network state
 
-The UI and local mock protocol are functional. No MuseLend contract address has been
-deployed to Base Sepolia, and no Vercel or database resource has been provisioned. Those
-steps require owner account access and a funded testnet signer. See `PLAN.md` and
-`docs/LAUNCH_GATES.md`.
+The guarded MuseLend testnet stack is deployed at Base Sepolia block `44,078,371` from
+commit `ded4bdd`. All 11 contracts have exact-match source verification on Sourcify,
+governance is handed to the one-day timelock, the separate pause guardian is active, and
+mainnet remains disabled. Public addresses are recorded in
+`packages/contracts/deployments/base-sepolia.json` and `deployments/base-sepolia.json`.
+
+Vercel production, persistence integrations and DNS remain operator-account gates. See
+`PLAN.md`, `docs/DEPLOYMENT.md`, and `docs/LAUNCH_GATES.md`.

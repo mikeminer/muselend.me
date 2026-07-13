@@ -73,14 +73,16 @@ is testnet-only and must not be presented as Uniswap market execution or reused 
 Publish `NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS` from the same manifest so the borrower UI
 derives indicative and maximum-rate debt figures from deployed contracts rather than constants.
 
-## Latest read-only Base Sepolia simulation
+## Base Sepolia deployment record
 
-On 2026-07-13, commit `61433c3` was simulated against the public Base Sepolia RPC with
-`WRITE_DEPLOYMENT_MANIFEST=false` and temporary nonzero role addresses. The script completed
-on chain ID `84532`, verified canonical USDC bytecode/decimals, executed every deployment and
-governance handoff, and passed its post-deployment invariants. Foundry estimated `23,059,136`
-gas and `0.000253650496 ETH` at the then-reported `0.011 gwei` gas price.
+On 2026-07-13, commit `ded4bdd` passed CI and was deployed to Base Sepolia from the dedicated
+encrypted testnet signer. Foundry broadcast 33 transactions; all 33 receipts succeeded. The
+manifest was written at block `44,078,371`. The signer nonce advanced from `0` to `33` and its
+balance changed from `0.1 ETH` to `0.099881067745602951 ETH`, a deployment cost of
+`0.000118932254397049 ETH`, below the pre-approved prudential cap of `0.000332051789 ETH`.
 
-This is reproducibility evidence, not a funding request or broadcast approval. Dry-run contract
-addresses are intentionally not published because they do not exist on-chain. Gas price and total
-cost must be recomputed immediately before any separately approved testnet broadcast.
+All 11 deployed contracts have non-empty on-chain bytecode and exact-match source verification
+on Sourcify. Read-only post-deployment checks confirmed canonical USDC decimals, the one-day
+timelock, role handoff, separately held pause-guardian role, revoked deployer default-admin roles,
+manager wiring, adapter allowlisting, creator-token validation and `mainnetEnabled == false`.
+The public addresses and transaction hashes are recorded in the repository deployment manifests.

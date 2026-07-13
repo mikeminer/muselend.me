@@ -22,18 +22,18 @@ test("health endpoint is explicit about the disabled mainnet", async ({ request 
     mainnetEnabled: false,
     readyForTransactions: false,
     readiness: {
-      contracts: false,
+      contracts: true,
       database: false,
       redis: false,
     },
   });
 });
 
-test("portfolio fails closed until verified contracts are configured", async ({ page }) => {
+test("portfolio recognizes the deployment and requires a wallet", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByRole("heading", { level: 1, name: "Your MuseLend overview" })).toBeVisible();
-  await expect(page.getByText("Contracts not configured", { exact: true })).toBeVisible();
-  await expect(page.getByText(/verified Base Sepolia addresses/i)).toBeVisible();
+  await expect(page.getByText("Connect your wallet", { exact: true })).toBeVisible();
+  await expect(page.getByText(/assembled from verified Base Sepolia contracts/i)).toBeVisible();
 });
 
 test("Italian locale persists and translates critical borrower risks", async ({ page }) => {
@@ -52,7 +52,7 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText("Il riscatto può essere parziale", { exact: true })).toBeVisible();
   await page.goto("/app");
   await expect(page.getByRole("heading", { level: 1, name: "La tua panoramica MuseLend" })).toBeVisible();
-  await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
+  await expect(page.getByText("Collega il wallet", { exact: true })).toBeVisible();
   await page.goto("/app/lend");
   await expect(page.getByRole("heading", { level: 1, name: "Deposita USDC nativo" })).toBeVisible();
   await expect(page.getByText("Deposita USDC", { exact: true })).toBeVisible();
@@ -61,13 +61,13 @@ test("Italian locale persists and translates critical borrower risks", async ({ 
   await expect(page.getByText("Posizione nell’epoca", { exact: true })).toBeVisible();
   await page.goto("/app/markets");
   await expect(page.getByRole("heading", { level: 1, name: "Mercati creator-token abilitati" })).toBeVisible();
-  await expect(page.getByText("Deployment testnet non configurato", { exact: true })).toBeVisible();
+  await expect(page.getByText("Passa a Base Sepolia", { exact: true })).toBeVisible();
   await page.goto("/app/positions");
   await expect(page.getByRole("heading", { level: 1, name: "Posizioni sintetiche con cap" })).toBeVisible();
-  await expect(page.getByText("Contratti non configurati", { exact: true })).toBeVisible();
+  await expect(page.getByText("Collega il wallet", { exact: true })).toBeVisible();
   await page.goto("/app/positions/1");
   await expect(page.getByText("Posizione", { exact: true })).toBeVisible();
-  await expect(page.getByText(/dati e transazioni della posizione restano disabilitati/i)).toBeVisible();
+  await expect(page.getByText("Collega il wallet", { exact: true })).toBeVisible();
 });
 
 test("Italian locale covers public documentation and legal gates", async ({ page }) => {
@@ -81,10 +81,11 @@ test("Italian locale covers public documentation and legal gates", async ({ page
   await page.goto("/terms");
   await expect(page.getByRole("heading", { level: 1, name: "Termini di utilizzo" })).toBeVisible();
   await page.goto("/status");
-  await expect(page.getByRole("heading", { level: 1, name: "Preparazione testnet" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Deployment Base Sepolia" })).toBeVisible();
   await page.goto("/admin");
   await expect(page.getByRole("heading", { level: 1, name: "Amministrazione del protocollo" })).toBeVisible();
-  await expect(page.getByText(/console resta fail-closed/i)).toBeVisible();
+  await expect(page.getByText("Collega un wallet", { exact: true })).toBeVisible();
+  await expect(page.getByText(/controlli dei ruoli vengono eseguiti direttamente/i)).toBeVisible();
 });
 
 for (const route of [

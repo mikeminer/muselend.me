@@ -58,8 +58,8 @@ explicit owner gates.
 - [x] Pass clean install, lint, typecheck, builds, 38 Foundry tests plus the optional live fork
       integration, invariants,
       Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
-- [ ] Deploy and verify contracts on Base Sepolia only after a funded testnet signer is
-      available and the owner approves signing transactions.
+- [x] Deploy and exact-match verify all 11 contracts on Base Sepolia from commit `ded4bdd`;
+      record all 33 successful receipts, the deployment block and governance handoff.
 - [x] Simulate the complete guarded deployment against the public Base Sepolia RPC without
       broadcasting; verify canonical USDC, governance handoff and post-deployment invariants.
 - [ ] Configure Vercel testnet mode, preview, production, and then connect the already

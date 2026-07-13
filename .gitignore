@@ -36,3 +36,5 @@ pnpm-debug.log*
 .certs/
 .venv/
 packages/contracts/slither-report.json
+
+.vercel
