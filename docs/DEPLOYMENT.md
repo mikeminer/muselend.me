@@ -1,10 +1,10 @@
 # Deployment
 
-Local tests use mocks. Base Sepolia deployment order is governance timelock, mock token
+Local tests use mocks. Base Sepolia deployment order is governance timelock, valueless mUSDC faucet, mock token
 and adapter, rate model, risk manager, senior vault, hedge epoch vault, receipt, position
 manager, treasury, validator configuration and one-time manager wiring. The risk,
 adapter and fee-manager roles point to the timelock; the pause guardian remains immediate.
-Scripts must verify chain ID `84532`, USDC bytecode/decimals, roles and
+Scripts must verify chain ID `84532`, mUSDC bytecode/decimals, roles and
 `mainnetEnabled == false`, then write `deployments/base-sepolia.json`.
 
 The deployer hands default administration and all non-emergency operational roles to the
@@ -91,8 +91,15 @@ The API reads source metadata, `balanceOf(wallet)`, `contractVersion()` and `get
 Base block. Creator classification comes from Zora's canonical index so legacy Creator Coins that
 predate `coinType()` remain supported. Signed vouchers expire after ten minutes. The voucher and
 factory mint exactly the full Base balance, while the factory enforces one claim per
-wallet/source-token pair. A mirror token is a faucet asset, not a bridge or a governance-enabled
-collateral market.
+wallet/source-token pair. A mirror token is a faucet asset, not a bridge. Official-factory
+mirrors are accepted only by the Base Sepolia deployment through bounded testnet defaults;
+explicit governance configuration can disable or override any mirror and this fallback cannot
+be enabled on mainnet.
+
+The protocol deployment creates `MuseLendTestUSDC` (`mUSDC`) rather than using Circle USDC.
+Each wallet can claim 10,000 mUSDC once. The deployer seeds 500,000 mUSDC in the senior vault,
+500,000 mUSDC in epoch 1 and 500,000 mUSDC in the deterministic adapter. mUSDC has no economic
+value and is not redeemable for Circle USDC.
 
 `BASE_MAINNET_RPC_URL` should be a production provider endpoint. The public Base RPC is
 explicitly rate-limited, so testnet operation also configures
@@ -101,6 +108,17 @@ secondary endpoint. Unexpected provider errors are normalized to `CLAIM_UNAVAILA
 returned verbatim to the browser.
 
 ## Base Sepolia deployment record
+
+On 2026-07-13 the mirror-enabled testnet protocol superseded the initial deployment at block
+`44,093,003`. Foundry broadcast 53 transactions and all 53 receipts succeeded. The deployment
+uses `MuseLendTestUSDC`, seed epoch 1, the published mirror factory and bounded testnet-only
+mirror defaults. Live reads confirmed the pappardelle mirror
+`0x7224Ab16C3503F63d8BdC5E845FE88eF92E33f14` validates as version 4, receives the configured
+60% advance rate and can obtain a deterministic sell quote for 10,000,000 tokens. Current
+addresses and the initial transaction are recorded in `deployments/base-sepolia.json`.
+
+The record below describes the superseded canonical-USDC deployment and remains for audit
+history only.
 
 On 2026-07-13, commit `ded4bdd` passed CI and was deployed to Base Sepolia from the dedicated
 encrypted testnet signer. Foundry broadcast 33 transactions; all 33 receipts succeeded. The
@@ -137,5 +155,6 @@ Sepolia manifest, keeps both mainnet flags disabled and reports contract and Ver
 Read-only health, pool-snapshot and direct-chain product paths were exercised after promotion.
 
 `readyForTransactions` intentionally remains `false` until a production database, Redis and
-WalletConnect project are provisioned and verified. The custom `muselend.me` domain is not yet
-attached: registrar or DNS changes remain an explicit owner gate.
+WalletConnect project are provisioned and verified. The custom `muselend.me` domain is attached
+with working HTTPS. On 2026-07-13 deployment `dpl_2Hm6Yy4S6uHM76tNA1Avy9AB2uim` published the
+mirror-enabled protocol addresses, mUSDC faucet and updated borrower validation copy.

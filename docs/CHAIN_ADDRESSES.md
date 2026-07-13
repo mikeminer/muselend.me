@@ -33,13 +33,16 @@ does not treat that network as canonical Creator Coin support.
 The MuseLend testnet mirror factory at
 `0x9e1Dbdebd28F104fF1D534055597dF03A92a4199` is therefore deliberately not listed as a
 canonical Zora deployment. It creates disclosed Base Sepolia faucet tokens after an attested
-Base balance read; these mirrors are not bridged assets and are not collateral markets unless
-governance registers them separately.
+Base balance read; these mirrors are not bridged assets. On Base Sepolia only, the validator
+checks factory provenance dynamically and the risk manager applies bounded mirror defaults.
+An explicit per-token governance setting always overrides those defaults, including disabling
+a mirror. This path is rejected when `mainnetEnabled == true`.
 
 No Zora Creator Coin V4 factory/validator or concrete V4 pool route is approved for Base
 Sepolia in this repository. `UniswapV4SwapAdapter` is implemented and tested against the
 official v2.1.1 action encoding, but remains undeployed and cannot trade until governance
-allowlists a fully verified `PoolKey`. Sepolia therefore uses `MockERC20` and
+allowlists a fully verified `PoolKey`. Sepolia therefore uses the valueless
+`MuseLendTestUSDC` faucet asset and
 `MockSwapAdapter`. Mainnet swap execution remains disabled; no pool address or hook may be
 inferred from a blog, social post or unrelated deployment list.
 

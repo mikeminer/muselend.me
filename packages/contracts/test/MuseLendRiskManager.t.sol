@@ -2,6 +2,7 @@
 pragma solidity 0.8.35;
 import { Test } from "forge-std/Test.sol";
 import { MuseLendRiskManager } from "../src/MuseLendRiskManager.sol";
+import { MockMirrorFactory, MockOfficialMirror } from "./helpers/MirrorMocks.sol";
 
 contract MuseLendRiskManagerTest is Test {
     MuseLendRiskManager risk;
@@ -71,5 +72,38 @@ contract MuseLendRiskManagerTest is Test {
         vm.prank(admin);
         vm.expectRevert(MuseLendRiskManager.InvalidRiskConfiguration.selector);
         risk.setOriginationFee(201);
+    }
+
+    function testOfficialMirrorsReceiveBoundedTestnetDefaults() public {
+        MockMirrorFactory factory = new MockMirrorFactory();
+        address sourceToken = makeAddr("sourceToken");
+        MockOfficialMirror mirror =
+            new MockOfficialMirror(address(factory), sourceToken, makeAddr("currency"), makeAddr("hook"));
+        factory.setMirror(sourceToken, address(mirror));
+
+        vm.startPrank(admin);
+        risk.setMirrorTokenConfig(address(factory), validConfig());
+        risk.setMirrorTerm(30 days, 250, true);
+        vm.stopPrank();
+
+        MuseLendRiskManager.TokenConfig memory config = risk.getTokenConfig(address(mirror));
+        assertTrue(config.enabled);
+        assertEq(config.advanceRateBps, 6000);
+        assertEq(risk.termPremium(address(mirror), 30 days), 250);
+
+        MuseLendRiskManager.TokenConfig memory disabled = validConfig();
+        disabled.enabled = false;
+        vm.prank(admin);
+        risk.setTokenConfig(address(mirror), disabled);
+        assertFalse(risk.getTokenConfig(address(mirror)).enabled);
+    }
+
+    function testMainnetCannotEnableMirrorDefaults() public {
+        MockMirrorFactory factory = new MockMirrorFactory();
+        MuseLendRiskManager mainnetRisk =
+            new MuseLendRiskManager(admin, admin, guardian, true, 1_000_000e6, 500_000e6, 50);
+        vm.prank(admin);
+        vm.expectRevert(MuseLendRiskManager.InvalidRiskConfiguration.selector);
+        mainnetRisk.setMirrorTokenConfig(address(factory), validConfig());
     }
 }

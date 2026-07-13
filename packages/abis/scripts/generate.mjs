@@ -14,6 +14,7 @@ const contracts = [
   "MuseLendPositionManager",
   "MuseLendPositionReceipt",
   "MuseLendRiskManager",
+  "MuseLendTestUSDC",
   "MuseLendUSDCVault",
   "ProtocolTreasury",
   "UniswapV4SwapAdapter",

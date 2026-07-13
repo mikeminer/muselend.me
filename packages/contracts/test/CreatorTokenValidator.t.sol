@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { CreatorTokenValidator } from "../src/CreatorTokenValidator.sol";
 import { MockERC20 } from "../src/mocks/MockERC20.sol";
 import { MockZoraCreatorToken } from "../src/mocks/MockZoraCreatorToken.sol";
+import { MockMirrorFactory, MockOfficialMirror } from "./helpers/MirrorMocks.sol";
 
 contract CreatorTokenValidatorTest is Test {
     CreatorTokenValidator validator;
@@ -40,6 +41,22 @@ contract CreatorTokenValidatorTest is Test {
         assertTrue(validator.validate(address(token), 4));
         token.setHook(makeAddr("replacementHook"));
         assertFalse(validator.validate(address(token), 4));
+    }
+
+    function testDynamicallyValidatesOnlyOfficialFactoryMirrors() public {
+        MockMirrorFactory factory = new MockMirrorFactory();
+        address sourceToken = makeAddr("sourceToken");
+        MockOfficialMirror mirror =
+            new MockOfficialMirror(address(factory), sourceToken, address(currency), makeAddr("hook"));
+        MockOfficialMirror rogue = new MockOfficialMirror(
+            address(factory), makeAddr("rogueSource"), address(currency), makeAddr("hook")
+        );
+        factory.setMirror(sourceToken, address(mirror));
+        validator.setMirrorFactory(address(factory));
+
+        assertTrue(validator.validate(address(mirror), 4));
+        assertFalse(validator.validate(address(mirror), 3));
+        assertFalse(validator.validate(address(rogue), 4));
     }
 }
 
