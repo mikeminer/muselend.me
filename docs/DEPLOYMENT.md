@@ -17,6 +17,18 @@ No private key belongs in Vercel. A testnet deployment requires a dedicated fund
 testnet signer supplied through a secure local keystore or hardware-wallet flow. Source
 verification and smoke transactions are mandatory before frontend addresses are set.
 
+Before either operator sequence, load the intended environment locally and run the
+non-mutating configuration preflight. It reports variable names and validation outcomes only;
+it never prints their values:
+
+```powershell
+node --env-file=.env.testnet scripts/readiness.mjs --target=base-sepolia
+node --env-file=.env.production scripts/readiness.mjs --target=vercel-production
+```
+
+A passing preflight confirms configuration shape, not contract correctness, account ownership,
+funding, source verification or authorization to broadcast/deploy.
+
 ## Base Sepolia operator sequence
 
 Import a dedicated testnet key into Foundry's encrypted keystore using the hidden prompts;

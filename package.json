@@ -10,6 +10,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "readiness": "node scripts/readiness.mjs",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "format:check": "prettier --check ."
