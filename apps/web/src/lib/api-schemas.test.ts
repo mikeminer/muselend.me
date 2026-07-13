@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptanceRequest, quoteRequest, tokenRequest } from "./api-schemas";
+import { acceptanceRequest, quoteRequest, testnetClaimRequest, testnetClaimVoucher, tokenRequest } from "./api-schemas";
 
 const wallet = "0x0000000000000000000000000000000000000001";
 
@@ -40,5 +40,26 @@ describe("public API schemas", () => {
         signature: "unsigned",
       }).success,
     ).toBe(false);
+  });
+
+  it("requires exact bounded metadata in testnet claim vouchers", () => {
+    const claim = { wallet, sourceToken: wallet };
+    expect(testnetClaimRequest.safeParse(claim).success).toBe(true);
+    expect(testnetClaimVoucher.safeParse({
+      ...claim,
+      amount: "1000000000000000000",
+      name: "Muse Coin",
+      symbol: "MUSE",
+      decimals: 18,
+      deadline: 2_000_000_000,
+    }).success).toBe(true);
+    expect(testnetClaimVoucher.safeParse({
+      ...claim,
+      amount: "1e18",
+      name: "Muse Coin",
+      symbol: "MUSE",
+      decimals: 18,
+      deadline: 2_000_000_000,
+    }).success).toBe(false);
   });
 });

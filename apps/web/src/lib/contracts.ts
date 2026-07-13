@@ -7,6 +7,7 @@ const swapAdapter = process.env.NEXT_PUBLIC_SWAP_ADAPTER_ADDRESS;
 const interestRateModel = process.env.NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS;
 const creatorTokenValidator = process.env.NEXT_PUBLIC_CREATOR_TOKEN_VALIDATOR_ADDRESS;
 const creatorToken = process.env.NEXT_PUBLIC_CREATOR_TOKEN_ADDRESS;
+const creatorMirrorFactory = process.env.NEXT_PUBLIC_CREATOR_MIRROR_FACTORY_ADDRESS;
 const riskManager = process.env.NEXT_PUBLIC_RISK_MANAGER_ADDRESS;
 const timelock = process.env.NEXT_PUBLIC_TIMELOCK_ADDRESS;
 const usdc = process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
@@ -24,6 +25,7 @@ export const contracts = {
   interestRateModel: optionalAddress(interestRateModel),
   creatorTokenValidator: optionalAddress(creatorTokenValidator),
   creatorToken: optionalAddress(creatorToken),
+  creatorMirrorFactory: optionalAddress(creatorMirrorFactory),
   riskManager: optionalAddress(riskManager),
   timelock: optionalAddress(timelock),
   usdc: optionalAddress(usdc),

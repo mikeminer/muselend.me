@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ChartNoAxesCombined, CircleDollarSign, LayoutDashboard, ShieldCheck, WalletCards } from "lucide-react";
+import { Activity, ChartNoAxesCombined, CircleDollarSign, Coins, LayoutDashboard, ShieldCheck, WalletCards } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -8,6 +8,7 @@ import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
   ["overview", "/app", LayoutDashboard],
+  ["claim", "/app/claim", Coins],
   ["borrow", "/app/borrow", CircleDollarSign],
   ["lend", "/app/lend", WalletCards],
   ["underwrite", "/app/underwrite", ShieldCheck],

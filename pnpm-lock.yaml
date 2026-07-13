@@ -39,6 +39,9 @@ importers:
       '@upstash/redis':
         specifier: 1.38.0
         version: 1.38.0
+      '@zoralabs/coins-sdk':
+        specifier: 0.7.0
+        version: 0.7.0(abitype@1.2.3(typescript@5.9.3)(zod@4.4.3))(viem@2.55.1(typescript@5.9.3)(zod@4.4.3))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -643,6 +646,10 @@ packages:
 
   '@formatjs/intl-localematcher@0.8.12':
     resolution: {integrity: sha512-5H3r5ZJ2jZqHEv9K343lvHmeMDKMxssawAVD2H4J9xtu0ZXb6MlNxwLqdwBxJSHFU0C24KSZnffgmAi+59mK4A==}
+
+  '@hey-api/client-fetch@0.8.4':
+    resolution: {integrity: sha512-SWtUjVEFIUdiJGR2NiuF0njsSrSdTe7WHWkp3BLH3DEl2bRhiflOnBo29NSDdrY90hjtTQiTQkBxUgGOF29Xzg==}
+    deprecated: Starting with v0.73.0, this package is bundled directly inside @hey-api/openapi-ts.
 
   '@hono/node-server@1.19.14':
     resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
@@ -2403,6 +2410,16 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  '@zoralabs/coins-sdk@0.7.0':
+    resolution: {integrity: sha512-50BV24nkqib3ajF2sqWGjSWBVRU2ts+bch9lbTUuvOAkMDPeyebIHvIRs0WVfItERwvLnxDHRfLlQpBQnBGFOA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      abitype: ^1.0.8
+      viem: 2.22.12
+
+  '@zoralabs/protocol-deployments@0.7.6':
+    resolution: {integrity: sha512-E8hkSFkpqxttSoH+GQJbcTvjnVQGL+Nlo2WXA3YSkEvzB7Xfv6JOaUxsVZ5ahj0HWD2dwTSw3AucXciIPnTWQQ==}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -5489,6 +5506,8 @@ snapshots:
     dependencies:
       '@formatjs/fast-memoize': 3.1.7
 
+  '@hey-api/client-fetch@0.8.4': {}
+
   '@hono/node-server@1.19.14(hono@4.12.29)':
     dependencies:
       hono: 4.12.29
@@ -7099,6 +7118,15 @@ snapshots:
       - immer
       - react
       - use-sync-external-store
+
+  '@zoralabs/coins-sdk@0.7.0(abitype@1.2.3(typescript@5.9.3)(zod@4.4.3))(viem@2.55.1(typescript@5.9.3)(zod@4.4.3))':
+    dependencies:
+      '@hey-api/client-fetch': 0.8.4
+      '@zoralabs/protocol-deployments': 0.7.6
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      viem: 2.55.1(typescript@5.9.3)(zod@4.4.3)
+
+  '@zoralabs/protocol-deployments@0.7.6': {}
 
   abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
     optionalDependencies:

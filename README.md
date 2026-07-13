@@ -8,6 +8,12 @@ while fixed junior epochs cover synthetic buyback exposure only up to an explici
 The product does **not** promise guaranteed yield, capital protection, or unlimited 1:1
 redemption. Base Mainnet is disabled.
 
+The Base Sepolia app also includes a testnet-only Creator Token claim. A server attests the
+connected wallet's canonical Creator Coin balance on Base, and a factory mints a distinct
+one-time ERC-20 mirror with the exact source name, symbol and decimals. This is not a bridge,
+does not make the test token redeemable on Base, and does not automatically enable it as
+MuseLend collateral.
+
 ## Workspace
 
 - `apps/web` — Next.js App Router product and public documentation.

@@ -73,6 +73,27 @@ is testnet-only and must not be presented as Uniswap market execution or reused 
 Publish `NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS` from the same manifest so the borrower UI
 derives indicative and maximum-rate debt figures from deployed contracts rather than constants.
 
+### Base Creator Token mirror
+
+The testnet claim factory is deployed separately with
+`script/DeployBaseSepoliaMirror.s.sol`. Its immutable attester must be a dedicated zero-funded
+signing account, different from the funded deployer and governance roles. The corresponding
+private key is server-only in `TESTNET_CLAIM_ATTESTER_PRIVATE_KEY`; it must never use a
+`NEXT_PUBLIC_` name, appear in a manifest, or be passed on a command line. Before broadcast:
+
+1. run the full factory tests and a non-broadcast script simulation on chain `84532`;
+2. confirm `TESTNET_CLAIM_ATTESTER` is the address derived from the server secret;
+3. deploy and verify the factory, then publish only `NEXT_PUBLIC_CREATOR_MIRROR_FACTORY_ADDRESS`;
+4. call `attester()`, `SOURCE_CHAIN_ID()` and `DESTINATION_CHAIN_ID()` on the deployed bytecode;
+5. exercise the API's invalid-input and fail-closed paths before enabling claims.
+
+The API reads source metadata, `balanceOf(wallet)`, `coinType()`, `contractVersion()` and
+`getPoolKey()` at one Base block. It accepts only coin type zero whose pool contains the source
+token and uses the current hook returned by the canonical Zora factory. Signed vouchers expire
+after ten minutes. The factory enforces one claim per wallet/source-token pair and a safety cap
+of 1,000,000 whole tokens. A mirror token is a faucet asset, not a bridge or a governance-enabled
+collateral market.
+
 ## Base Sepolia deployment record
 
 On 2026-07-13, commit `ded4bdd` passed CI and was deployed to Base Sepolia from the dedicated

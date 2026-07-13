@@ -6,6 +6,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const contractsOut = resolve(here, "../../contracts/out");
 const destination = resolve(here, "../src/index.ts");
 const contracts = [
+  "BaseCreatorTokenMirror",
+  "BaseCreatorTokenMirrorFactory",
   "CreatorTokenValidator",
   "InterestRateModel",
   "MuseLendHedgeEpochVault",
@@ -19,7 +21,8 @@ const contracts = [
 
 const entries = [];
 for (const contract of contracts) {
-  const artifactPath = resolve(contractsOut, `${contract}.sol/${contract}.json`);
+  const source = contract === "BaseCreatorTokenMirror" ? "BaseCreatorTokenMirrorFactory" : contract;
+  const artifactPath = resolve(contractsOut, `${source}.sol/${contract}.json`);
   const artifact = JSON.parse(await readFile(artifactPath, "utf8"));
   entries.push({ contract, abi: JSON.stringify(artifact.abi) });
 }
