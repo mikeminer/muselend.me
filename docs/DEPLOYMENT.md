@@ -87,11 +87,11 @@ private key is server-only in `TESTNET_CLAIM_ATTESTER_PRIVATE_KEY`; it must neve
 4. call `attester()`, `SOURCE_CHAIN_ID()` and `DESTINATION_CHAIN_ID()` on the deployed bytecode;
 5. exercise the API's invalid-input and fail-closed paths before enabling claims.
 
-The API reads source metadata, `balanceOf(wallet)`, `coinType()`, `contractVersion()` and
-`getPoolKey()` at one Base block. It accepts only coin type zero whose pool contains the source
-token and uses the current hook returned by the canonical Zora factory. Signed vouchers expire
-after ten minutes. The factory enforces one claim per wallet/source-token pair and a safety cap
-of 1,000,000 whole tokens. A mirror token is a faucet asset, not a bridge or a governance-enabled
+The API reads source metadata, `balanceOf(wallet)`, `contractVersion()` and `getPoolKey()` at one
+Base block. Creator classification comes from Zora's canonical index so legacy Creator Coins that
+predate `coinType()` remain supported. Signed vouchers expire after ten minutes. The voucher and
+factory mint exactly the full Base balance, while the factory enforces one claim per
+wallet/source-token pair. A mirror token is a faucet asset, not a bridge or a governance-enabled
 collateral market.
 
 `BASE_MAINNET_RPC_URL` should be a production provider endpoint. The public Base RPC is
@@ -116,15 +116,16 @@ The public addresses and transaction hashes are recorded in the repository deplo
 
 ### Creator Token mirror deployment record
 
-On 2026-07-13, the isolated `BaseCreatorTokenMirrorFactory` was deployed at Base Sepolia
-block `44,082,475` from commit `a8b7b3e`. Transaction
-`0xf0bd176f5054472acdac237e33873eea06335b93878c0ff3ac439564ef20eb32` succeeded and
-created factory `0x048a7F340962f45B676440B66C0806347867575E`. The transaction used
-`0.000013923606830767 ETH`; the funded deployer retained `0.099867144138772184 ETH`.
+On 2026-07-13, the exact-balance `BaseCreatorTokenMirrorFactory` was deployed at Base Sepolia
+block `44,089,217`. Transaction
+`0x404ab300621dd38a2b672019446fc70e0d0790b541961ca0ac27e366203d7cab` succeeded and
+created factory `0x9e1Dbdebd28F104fF1D534055597dF03A92a4199`. The transaction used
+`0.000012717888 ETH`; the funded deployer retained `0.099854114571872064 ETH`. It supersedes
+the initial capped factory, which had emitted zero `Claimed` events before replacement.
 
 Post-deployment calls confirmed source chain `8453`, destination chain `84532`, native Base
 Sepolia USDC, the configured Sepolia V4 hook and attester
-`0x9324018e1F22b69612d2B783b8Bb108bfE0aCEAA`. Runtime bytecode is 9,700 bytes and the
+`0x9324018e1F22b69612d2B783b8Bb108bfE0aCEAA`. Runtime bytecode is 9,527 bytes and the
 factory has exact-match Sourcify verification. The sensitive signing key exists only as the
 write-only Vercel production variable `TESTNET_CLAIM_ATTESTER_PRIVATE_KEY`.
 

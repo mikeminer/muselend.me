@@ -202,7 +202,6 @@ export function CreatorTokenClaimPanel() {
                 <div><p className="text-muted-foreground">{t("baseBalance")}</p><p className="mt-1 break-all font-mono">{formatUnits(BigInt(attestation.sourceBalance), attestation.voucher.decimals)}</p></div>
                 <div><p className="text-muted-foreground">{t("claimAmount")}</p><p className="mt-1 break-all font-mono">{formatUnits(BigInt(attestation.voucher.amount), attestation.voucher.decimals)}</p></div>
               </div>
-              {attestation.capped ? <p className="text-xs text-amber-200">{t("capNotice")}</p> : null}
             </div>
           ) : attestation?.claimed ? (
             <Alert>

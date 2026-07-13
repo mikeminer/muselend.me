@@ -31,7 +31,7 @@ Content Coin V3/V4 implementations but no Creator Coin implementation, so this r
 does not treat that network as canonical Creator Coin support.
 
 The MuseLend testnet mirror factory at
-`0x048a7F340962f45B676440B66C0806347867575E` is therefore deliberately not listed as a
+`0x9e1Dbdebd28F104fF1D534055597dF03A92a4199` is therefore deliberately not listed as a
 canonical Zora deployment. It creates disclosed Base Sepolia faucet tokens after an attested
 Base balance read; these mirrors are not bridged assets and are not collateral markets unless
 governance registers them separately.

@@ -53,6 +53,18 @@ contract BaseCreatorTokenMirrorFactoryTest is Test {
         factory.claim(voucher, signature);
     }
 
+    function testClaimMintsThirtyMillionTokenBalanceExactly() public {
+        uint256 sourceBalance = 30_000_000e18;
+        BaseCreatorTokenMirrorFactory.Claim memory voucher = _voucher(wallet, SOURCE_TOKEN, sourceBalance);
+        bytes memory signature = _sign(voucher, ATTESTER_KEY);
+
+        vm.prank(wallet);
+        BaseCreatorTokenMirror mirror = BaseCreatorTokenMirror(factory.claim(voucher, signature));
+
+        assertEq(mirror.balanceOf(wallet), sourceBalance);
+        assertEq(mirror.totalSupply(), sourceBalance);
+    }
+
     function testSecondWalletReusesMirrorAndMustKeepMetadata() public {
         address secondWallet = address(0xD00D);
         BaseCreatorTokenMirrorFactory.Claim memory first = _voucher(wallet, SOURCE_TOKEN, 2e18);
@@ -77,7 +89,7 @@ contract BaseCreatorTokenMirrorFactoryTest is Test {
         factory.claim(mismatch, mismatchSignature);
     }
 
-    function testRejectsWrongSignerExpiredOversizedAndWrongChainClaims() public {
+    function testRejectsWrongSignerExpiredAndWrongChainClaims() public {
         BaseCreatorTokenMirrorFactory.Claim memory voucher = _voucher(wallet, SOURCE_TOKEN, 1e18);
         bytes memory wrongSignature = _sign(voucher, 0xBAD);
 
@@ -90,12 +102,6 @@ contract BaseCreatorTokenMirrorFactoryTest is Test {
         vm.expectRevert(BaseCreatorTokenMirrorFactory.ClaimExpired.selector);
         vm.prank(wallet);
         factory.claim(voucher, expiredSignature);
-
-        voucher = _voucher(wallet, SOURCE_TOKEN, 1_000_001e18);
-        bytes memory oversizedSignature = _sign(voucher, ATTESTER_KEY);
-        vm.expectRevert(BaseCreatorTokenMirrorFactory.ClaimTooLarge.selector);
-        vm.prank(wallet);
-        factory.claim(voucher, oversizedSignature);
 
         voucher = _voucher(wallet, SOURCE_TOKEN, 1e18);
         bytes memory wrongChainSignature = _sign(voucher, ATTESTER_KEY);

@@ -12,7 +12,6 @@ import {
 } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
-export const MAX_CLAIM_TOKENS = 1_000_000n;
 export const CLAIM_DOMAIN = {
   name: "MuseLend Base Creator Mirror",
   version: "1",
@@ -59,7 +58,6 @@ export type ClaimAttestation = {
   claimed: boolean;
   eligible: boolean;
   mirror?: Address;
-  capped: boolean;
   sourceBalance: bigint;
   voucher?: ClaimVoucher;
   signature?: Hex;
@@ -76,9 +74,8 @@ export function validateCreatorMetadata(name: string, symbol: string, decimals: 
   }
 }
 
-export function claimAmount(balance: bigint, decimals: number) {
-  const maximum = MAX_CLAIM_TOKENS * 10n ** BigInt(decimals);
-  return { amount: balance > maximum ? maximum : balance, capped: balance > maximum };
+export function claimAmount(balance: bigint) {
+  return balance;
 }
 
 export function validateIndexedCreatorCoin(coin: IndexedCoin | undefined, sourceToken: Address) {
@@ -164,15 +161,14 @@ export async function createClaimAttestation(
     throw new Error("CLAIM_ATTESTER_MISMATCH");
   }
   const existingMirror = mirror === "0x0000000000000000000000000000000000000000" ? undefined : mirror;
-  const limited = claimAmount(balance, decimals);
   if (claimed) {
-    return { claimed: true, eligible: false, mirror: existingMirror, capped: limited.capped, sourceBalance: balance };
+    return { claimed: true, eligible: false, mirror: existingMirror, sourceBalance: balance };
   }
 
   const voucher: ClaimVoucher = {
     wallet,
     sourceToken,
-    amount: limited.amount,
+    amount: claimAmount(balance),
     name,
     symbol,
     decimals,
@@ -188,7 +184,6 @@ export async function createClaimAttestation(
     claimed: false,
     eligible: true,
     mirror: existingMirror,
-    capped: limited.capped,
     sourceBalance: balance,
     voucher,
     signature,

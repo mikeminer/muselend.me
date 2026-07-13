@@ -285,7 +285,6 @@
     "claimDescription": "Il factory ricontrolla importo e metadati firmati prima del mint.",
     "baseBalance": "Saldo Base",
     "claimAmount": "Mint su Sepolia",
-    "capNotice": "Il limite di sicurezza riduce questo claim testnet a 1.000.000 di token interi.",
     "alreadyClaimedTitle": "Già riscattato",
     "alreadyClaimedText": "Questo wallet ha già riscattato il token sorgente. La regola è imposta on-chain.",
     "empty": "Verifica un token sorgente per preparare il claim testnet.",

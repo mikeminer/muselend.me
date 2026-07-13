@@ -62,7 +62,6 @@ contract BaseCreatorTokenMirrorFactory is EIP712 {
 
     uint256 public constant SOURCE_CHAIN_ID = 8453;
     uint256 public constant DESTINATION_CHAIN_ID = 84532;
-    uint256 public constant MAX_CLAIM_TOKENS = 1_000_000;
     bytes32 public constant CLAIM_TYPEHASH = keccak256(
         "Claim(address wallet,address sourceToken,uint256 amount,string name,string symbol,uint8 decimals,uint256 deadline)"
     );
@@ -93,7 +92,6 @@ contract BaseCreatorTokenMirrorFactory is EIP712 {
 
     error AlreadyClaimed();
     error ClaimExpired();
-    error ClaimTooLarge();
     error InvalidAttester();
     error InvalidClaim();
     error InvalidMetadata();
@@ -128,8 +126,6 @@ contract BaseCreatorTokenMirrorFactory is EIP712 {
         ) {
             revert InvalidMetadata();
         }
-        if (voucher.amount > MAX_CLAIM_TOKENS * 10 ** voucher.decimals) revert ClaimTooLarge();
-
         if (hashClaim(voucher).recover(signature) != attester) revert InvalidSignature();
 
         bytes32 metadataHash = keccak256(abi.encode(voucher.name, voucher.symbol, voucher.decimals));

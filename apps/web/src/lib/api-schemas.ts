@@ -28,7 +28,6 @@ export const testnetClaimAttestationResponse = z.object({
   claimed: z.boolean(),
   eligible: z.boolean(),
   mirror: address.optional(),
-  capped: z.boolean(),
   sourceBalance: z.string().regex(/^\d+$/),
   voucher: testnetClaimVoucher.optional(),
   signature: z.string().regex(/^0x[\da-fA-F]+$/).optional(),

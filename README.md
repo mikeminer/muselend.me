@@ -48,7 +48,7 @@ mainnet remains disabled. Public addresses are recorded in
 `packages/contracts/deployments/base-sepolia.json` and `deployments/base-sepolia.json`.
 
 The isolated Creator Token mirror factory is deployed separately at
-`0x048a7F340962f45B676440B66C0806347867575E` (block `44,082,475`) and has exact-match
+`0x9e1Dbdebd28F104fF1D534055597dF03A92a4199` (block `44,089,217`) and has exact-match
 Sourcify verification. Its public deployment record is stored in
 `packages/contracts/deployments/base-sepolia-mirror.json` and
 `deployments/base-sepolia-mirror.json`.

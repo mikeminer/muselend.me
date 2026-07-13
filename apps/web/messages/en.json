@@ -285,7 +285,6 @@
     "claimDescription": "The signed amount and metadata are checked again by the factory before minting.",
     "baseBalance": "Base balance",
     "claimAmount": "Sepolia mint",
-    "capNotice": "The safety cap limits this testnet claim to 1,000,000 whole tokens.",
     "alreadyClaimedTitle": "Already claimed",
     "alreadyClaimedText": "This wallet has already claimed this source token. The rule is enforced on-chain.",
     "empty": "Verify a source token to prepare the testnet claim.",
