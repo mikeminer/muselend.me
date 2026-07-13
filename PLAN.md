@@ -58,6 +58,8 @@ explicit owner gates.
   Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
 - [ ] Deploy and verify contracts on Base Sepolia only after a funded testnet signer is
   available and the owner approves signing transactions.
+- [x] Simulate the complete guarded deployment against the public Base Sepolia RPC without
+  broadcasting; verify canonical USDC, governance handoff and post-deployment invariants.
 - [ ] Configure Vercel testnet mode, preview, production, and then connect the already
   owned domain after verifying the intended Vercel scope and DNS authority.
 - [ ] Keep `MAINNET_ENABLED=false` until every documented launch gate is independently met.

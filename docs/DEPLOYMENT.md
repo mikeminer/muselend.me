@@ -60,3 +60,15 @@ on-chain test price before returning a typed route. They never return calldata. 
 is testnet-only and must not be presented as Uniswap market execution or reused for mainnet.
 Publish `NEXT_PUBLIC_INTEREST_RATE_MODEL_ADDRESS` from the same manifest so the borrower UI
 derives indicative and maximum-rate debt figures from deployed contracts rather than constants.
+
+## Latest read-only Base Sepolia simulation
+
+On 2026-07-13, commit `61433c3` was simulated against the public Base Sepolia RPC with
+`WRITE_DEPLOYMENT_MANIFEST=false` and temporary nonzero role addresses. The script completed
+on chain ID `84532`, verified canonical USDC bytecode/decimals, executed every deployment and
+governance handoff, and passed its post-deployment invariants. Foundry estimated `23,059,136`
+gas and `0.000253650496 ETH` at the then-reported `0.011 gwei` gas price.
+
+This is reproducibility evidence, not a funding request or broadcast approval. Dry-run contract
+addresses are intentionally not published because they do not exist on-chain. Gas price and total
+cost must be recomputed immediately before any separately approved testnet broadcast.
