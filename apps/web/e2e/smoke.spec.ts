@@ -110,7 +110,10 @@ test("Italian locale persists and translates critical borrower risks", async ({
   ).toBeVisible();
   await page.goto("/app/lend");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Deposita USDC nativo" }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "Deposita USDC testnet ufficiale",
+    }),
   ).toBeVisible();
   await expect(page.getByText("Deposita USDC", { exact: true })).toBeVisible();
   await page.goto("/app/underwrite");

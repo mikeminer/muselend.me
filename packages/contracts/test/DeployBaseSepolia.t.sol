@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { DeployBaseSepolia } from "../script/DeployBaseSepolia.s.sol";
 import { MuseLendPositionManager } from "../src/MuseLendPositionManager.sol";
 import { ISwapAdapter } from "../src/interfaces/ISwapAdapter.sol";
+import { MockERC20 } from "../src/mocks/MockERC20.sol";
 import { MockMirrorFactory, MockOfficialMirror } from "./helpers/MirrorMocks.sol";
 
 contract DeployBaseSepoliaTest is Test {
@@ -13,6 +14,10 @@ contract DeployBaseSepoliaTest is Test {
         address admin = makeAddr("testnetAdmin");
         address proposer = makeAddr("proposer");
         address guardian = makeAddr("guardian");
+        address canonicalUsdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+        MockERC20 testImplementation = new MockERC20("USD Coin", "USDC", 6);
+        vm.etch(canonicalUsdc, address(testImplementation).code);
+        MockERC20(canonicalUsdc).mint(admin, 20e6);
         MockMirrorFactory factory = new MockMirrorFactory();
         address sourceToken = makeAddr("sourceToken");
         MockOfficialMirror mirror =
@@ -36,8 +41,10 @@ contract DeployBaseSepoliaTest is Test {
         assertTrue(deployment.validator.validate(address(mirror), 4));
         assertTrue(deployment.riskManager.getTokenConfig(address(mirror)).enabled);
         assertEq(deployment.riskManager.termPremium(address(mirror), 30 days), 250);
-        assertEq(deployment.usdc.balanceOf(address(deployment.adapter)), 500_000e6);
-        assertEq(deployment.hedgeVault.availableCoverage(deployment.seedEpochId), 500_000e6);
+        assertEq(address(deployment.usdc), canonicalUsdc);
+        assertEq(deployment.usdc.balanceOf(address(deployment.adapter)), 10e6);
+        assertEq(deployment.usdc.balanceOf(address(deployment.seniorVault)), 6e6);
+        assertEq(deployment.hedgeVault.availableCoverage(deployment.seedEpochId), 4e6);
 
         address borrower = makeAddr("borrower");
         uint256 amount = 10_000_000e18;

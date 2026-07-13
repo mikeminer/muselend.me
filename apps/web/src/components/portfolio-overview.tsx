@@ -3,27 +3,17 @@
 import {
   MuseLendHedgeEpochVaultAbi,
   MuseLendPositionManagerAbi,
-  MuseLendTestUSDCAbi,
   MuseLendUSDCVaultAbi,
 } from "@muselend/abis";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
 import { formatUnits } from "viem";
-import {
-  useAccount,
-  useReadContract,
-  useReadContracts,
-  useSimulateContract,
-  useWriteContract,
-} from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TransactionStatus } from "@/components/transaction-status";
 import { contracts, deploymentConfigured } from "@/lib/contracts";
-import { useTrackedTransaction } from "@/lib/use-tracked-transaction";
 
 type PositionTuple = readonly [
   `0x${string}`,
@@ -54,7 +44,6 @@ export function PortfolioOverview() {
   const manager = contracts.positionManager;
   const senior = contracts.seniorVault;
   const hedge = contracts.hedgeEpochVault;
-  const testUsdc = contracts.usdc;
   const enabled = deploymentConfigured && Boolean(address) && chainId === 84532;
   const nextPosition = useReadContract({
     address: manager,
@@ -84,47 +73,6 @@ export function PortfolioOverview() {
     args: address ? [address] : undefined,
     query: { enabled },
   });
-  const faucetReads = useReadContracts({
-    contracts:
-      testUsdc && address
-        ? [
-            {
-              address: testUsdc,
-              abi: MuseLendTestUSDCAbi,
-              functionName: "balanceOf",
-              args: [address],
-            },
-            {
-              address: testUsdc,
-              abi: MuseLendTestUSDCAbi,
-              functionName: "hasClaimedFaucet",
-              args: [address],
-            },
-            {
-              address: testUsdc,
-              abi: MuseLendTestUSDCAbi,
-              functionName: "FAUCET_AMOUNT",
-            },
-          ]
-        : [],
-    query: { enabled },
-  });
-  const faucetClaimed =
-    faucetReads.data?.[1]?.status === "success" &&
-    faucetReads.data[1].result === true;
-  const faucetSimulation = useSimulateContract({
-    address: testUsdc,
-    abi: MuseLendTestUSDCAbi,
-    functionName: "faucet",
-    account: address,
-    query: { enabled: enabled && !faucetClaimed },
-  });
-  const faucetTransaction = useWriteContract();
-  const faucetReceipt = useTrackedTransaction(faucetTransaction.data);
-  const refetchFaucet = faucetReads.refetch;
-  useEffect(() => {
-    if (faucetReceipt.status === "confirmed") void refetchFaucet();
-  }, [faucetReceipt.status, refetchFaucet]);
   const positionReads = useReadContracts({
     contracts: manager
       ? positionIds.map((id) => ({
@@ -159,7 +107,6 @@ export function PortfolioOverview() {
     nextPosition.isLoading ||
     nextEpoch.isLoading ||
     seniorSharesRead.isLoading ||
-    faucetReads.isLoading ||
     positionReads.isLoading ||
     epochReads.isLoading
   )
@@ -172,7 +119,6 @@ export function PortfolioOverview() {
     nextPosition.isError ||
     nextEpoch.isError ||
     seniorSharesRead.isError ||
-    faucetReads.isError ||
     positionReads.isError ||
     epochReads.isError
   )
@@ -180,8 +126,6 @@ export function PortfolioOverview() {
 
   const seniorShares =
     typeof seniorSharesRead.data === "bigint" ? seniorSharesRead.data : 0n;
-  const testUsdcBalance = readBigInt(faucetReads.data?.[0]);
-  const faucetAmount = readBigInt(faucetReads.data?.[2]);
   const owned = (positionReads.data ?? []).flatMap((result, index) => {
     if (result.status !== "success") return [];
     const position = result.result as unknown as PositionTuple;
@@ -213,34 +157,15 @@ export function PortfolioOverview() {
           <p className="text-sm text-muted-foreground">
             {t("faucetDescription")}
           </p>
-          <p className="font-mono text-sm">
-            {t("faucetBalance", { balance: units(testUsdcBalance) })}
-          </p>
-          <Button
-            disabled={
-              faucetClaimed ||
-              !faucetSimulation.data?.request ||
-              faucetTransaction.isPending ||
-              faucetReceipt.status === "confirming"
-            }
-            onClick={() =>
-              faucetSimulation.data?.request &&
-              faucetTransaction.writeContract(faucetSimulation.data.request)
-            }
-          >
-            {faucetClaimed
-              ? t("faucetClaimed")
-              : t("faucetClaim", { amount: units(faucetAmount) })}
+          <Button asChild>
+            <a
+              href="https://faucet.circle.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("faucetClaim")}
+            </a>
           </Button>
-          <TransactionStatus
-            hash={faucetReceipt.finalHash}
-            walletPending={faucetTransaction.isPending}
-            confirming={faucetReceipt.status === "confirming"}
-            confirmed={faucetReceipt.status === "confirmed"}
-            error={faucetTransaction.error ?? faucetReceipt.error}
-            replacementReason={faucetReceipt.replacementReason}
-            label={t("faucetTransaction")}
-          />
         </CardContent>
       </Card>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

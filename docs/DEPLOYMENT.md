@@ -1,10 +1,10 @@
 # Deployment
 
-Local tests use mocks. Base Sepolia deployment order is governance timelock, valueless mUSDC faucet, mock token
-and adapter, rate model, risk manager, senior vault, hedge epoch vault, receipt, position
+Local tests use mocks. Base Sepolia deployment order is governance timelock, canonical Circle testnet USDC,
+mock token and adapter, rate model, risk manager, senior vault, hedge epoch vault, receipt, position
 manager, treasury, validator configuration and one-time manager wiring. The risk,
 adapter and fee-manager roles point to the timelock; the pause guardian remains immediate.
-Scripts must verify chain ID `84532`, mUSDC bytecode/decimals, roles and
+Scripts must verify chain ID `84532`, canonical USDC address/bytecode/decimals, roles and
 `mainnetEnabled == false`, then write `deployments/base-sepolia.json`.
 
 The deployer hands default administration and all non-emergency operational roles to the
@@ -96,10 +96,12 @@ mirrors are accepted only by the Base Sepolia deployment through bounded testnet
 explicit governance configuration can disable or override any mirror and this fallback cannot
 be enabled on mainnet.
 
-The protocol deployment creates `MuseLendTestUSDC` (`mUSDC`) rather than using Circle USDC.
-Each wallet can claim 10,000 mUSDC once. The deployer seeds 500,000 mUSDC in the senior vault,
-500,000 mUSDC in epoch 1 and 500,000 mUSDC in the deterministic adapter. mUSDC has no economic
-value and is not redeemable for Circle USDC.
+The protocol uses Circle's canonical Base Sepolia USDC at
+`0x036CbD53842c5426634e7929541eC2318f3dCF7e`. Before deployment, the dedicated signer must
+hold at least 20 testnet USDC from Circle's public faucet. The script seeds 6 USDC in the
+senior vault, 4 USDC in epoch 1 and 10 USDC in the deterministic adapter. This is Circle's
+official testnet contract, but testnet USDC has no economic value and is not redeemable for
+mainnet USDC.
 
 `BASE_MAINNET_RPC_URL` should be a production provider endpoint. The public Base RPC is
 explicitly rate-limited, so testnet operation also configures
@@ -109,16 +111,25 @@ returned verbatim to the browser.
 
 ## Base Sepolia deployment record
 
-On 2026-07-13 the mirror-enabled testnet protocol superseded the initial deployment at block
-`44,093,003`. Foundry broadcast 53 transactions and all 53 receipts succeeded. The deployment
-uses `MuseLendTestUSDC`, seed epoch 1, the published mirror factory and bounded testnet-only
-mirror defaults. Live reads confirmed the pappardelle mirror
-`0x7224Ab16C3503F63d8BdC5E845FE88eF92E33f14` validates as version 4, receives the configured
-60% advance rate and can obtain a deterministic sell quote for 10,000,000 tokens. Current
-addresses and the initial transaction are recorded in `deployments/base-sepolia.json`.
+On 2026-07-13 the canonical Circle-USDC protocol was deployed at block `44,094,986`.
+Foundry broadcast 52 transactions and all 52 receipts succeeded. The deployment uses Circle's
+Base Sepolia USDC at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; live reads confirmed
+10 USDC in the deterministic adapter, 6 USDC in the senior vault and 4 USDC in seed epoch 1.
+The pappardelle mirror `0x7224Ab16C3503F63d8BdC5E845FE88eF92E33f14` validates as version 4
+with a 60% advance rate and 140% coverage cap. The first deployment transaction is
+`0xdf6980d4f1a473a8a88522ad06d604a1beb14a15d728798ebd7b959eb63260ec`.
 
-The record below describes the superseded canonical-USDC deployment and remains for audit
-history only.
+The record below describes the superseded custom-mUSDC deployment and remains for audit history.
+
+On 2026-07-13 an intermediate mirror-enabled testnet protocol superseded the initial deployment at block
+`44,093,003`. Foundry broadcast 53 transactions and all 53 receipts succeeded. The deployment
+used `MuseLendTestUSDC`, seed epoch 1, the published mirror factory and bounded testnet-only
+mirror defaults. Live reads confirmed the pappardelle mirror
+`0x7224Ab16C3503F63d8BdC5E845FE88eF92E33f14` validated as version 4, received the configured
+60% advance rate and could obtain a deterministic sell quote for 10,000,000 tokens. Its
+addresses and transaction history remain available in the git history.
+
+The record below describes the earlier canonical-USDC deployment and also remains for audit history.
 
 On 2026-07-13, commit `ded4bdd` passed CI and was deployed to Base Sepolia from the dedicated
 encrypted testnet signer. Foundry broadcast 33 transactions; all 33 receipts succeeded. The
@@ -157,4 +168,4 @@ Read-only health, pool-snapshot and direct-chain product paths were exercised af
 `readyForTransactions` intentionally remains `false` until a production database, Redis and
 WalletConnect project are provisioned and verified. The custom `muselend.me` domain is attached
 with working HTTPS. On 2026-07-13 deployment `dpl_2Hm6Yy4S6uHM76tNA1Avy9AB2uim` published the
-mirror-enabled protocol addresses, mUSDC faucet and updated borrower validation copy.
+mirror-enabled protocol addresses, the now-superseded mUSDC faucet and updated borrower validation copy.

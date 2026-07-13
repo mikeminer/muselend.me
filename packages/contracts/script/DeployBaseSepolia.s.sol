@@ -13,19 +13,23 @@ import { MuseLendPositionManager } from "../src/MuseLendPositionManager.sol";
 import { ProtocolTreasury } from "../src/ProtocolTreasury.sol";
 import { MockZoraCreatorToken } from "../src/mocks/MockZoraCreatorToken.sol";
 import { MockSwapAdapter } from "../src/mocks/MockSwapAdapter.sol";
-import { MuseLendTestUSDC } from "../src/mocks/MuseLendTestUSDC.sol";
 
 contract DeployBaseSepolia is Script {
+    address constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     address constant BASE_SEPOLIA_ZORA_V4_HOOK = 0xe0eC17Ab9f7ce52cC60DFB64E0A0A705d02Bd040;
-    uint256 constant SEEDED_SENIOR_LIQUIDITY = 500_000e6;
-    uint256 constant SEEDED_JUNIOR_LIQUIDITY = 500_000e6;
-    uint256 constant SEEDED_ADAPTER_LIQUIDITY = 500_000e6;
+    uint256 constant SEEDED_SENIOR_LIQUIDITY = 6e6;
+    uint256 constant SEEDED_JUNIOR_LIQUIDITY = 4e6;
+    uint256 constant SEEDED_ADAPTER_LIQUIDITY = 10e6;
+    uint256 constant TOTAL_SEED_LIQUIDITY =
+        SEEDED_SENIOR_LIQUIDITY + SEEDED_JUNIOR_LIQUIDITY + SEEDED_ADAPTER_LIQUIDITY;
     error WrongChain();
+    error InvalidCanonicalUsdc();
+    error InsufficientSeedLiquidity();
     error InvalidMirrorFactory();
     error PostDeploymentInvariant();
 
     struct Deployment {
-        MuseLendTestUSDC usdc;
+        IERC20Metadata usdc;
         MockZoraCreatorToken creatorToken;
         MockSwapAdapter adapter;
         InterestRateModel rateModel;
@@ -48,13 +52,15 @@ contract DeployBaseSepolia is Script {
         address guardian = vm.envAddress("TESTNET_PAUSE_GUARDIAN");
         d.mirrorFactory = vm.envAddress("CREATOR_MIRROR_FACTORY_ADDRESS");
         if (d.mirrorFactory.code.length == 0) revert InvalidMirrorFactory();
+        d.usdc = IERC20Metadata(BASE_SEPOLIA_USDC);
+        if (BASE_SEPOLIA_USDC.code.length == 0 || d.usdc.decimals() != 6) revert InvalidCanonicalUsdc();
+        if (d.usdc.balanceOf(admin) < TOTAL_SEED_LIQUIDITY) revert InsufficientSeedLiquidity();
         vm.startBroadcast(admin);
         address[] memory proposers = new address[](1);
         proposers[0] = timelockProposer;
         address[] memory executors = new address[](1);
         executors[0] = address(0);
         d.timelock = new TimelockController(1 days, proposers, executors, address(0));
-        d.usdc = new MuseLendTestUSDC(admin);
         d.creatorToken = new MockZoraCreatorToken(address(d.usdc), BASE_SEPOLIA_ZORA_V4_HOOK);
         d.adapter = new MockSwapAdapter(1, address(d.timelock));
         d.rateModel = new InterestRateModel(
@@ -98,7 +104,7 @@ contract DeployBaseSepolia is Script {
 
     function _configureMarkets(Deployment memory d) internal {
         MuseLendRiskManager.TokenConfig memory config = MuseLendRiskManager.TokenConfig(
-            true, 4, 3, 6000, 9000, 15_000, 1000, 1e6, 250_000e6, 1_000_000e6, 250_000e6
+            true, 4, 3, 6000, 9000, 14_000, 1000, 1e6, 250_000e6, 1_000_000e6, 250_000e6
         );
         d.riskManager.setTokenConfig(address(d.creatorToken), config);
         d.riskManager.setMirrorTokenConfig(d.mirrorFactory, config);
@@ -180,7 +186,7 @@ contract DeployBaseSepolia is Script {
             && d.positionManager.allowedAdapter(address(d.adapter)) && d.timelock.getMinDelay() == 1 days
             && d.validator.validate(address(d.creatorToken), 4)
             && d.validator.mirrorFactory() == d.mirrorFactory
-            && d.riskManager.mirrorFactory() == d.mirrorFactory
+            && d.riskManager.mirrorFactory() == d.mirrorFactory && address(d.usdc) == BASE_SEPOLIA_USDC
             && d.usdc.balanceOf(address(d.adapter)) == SEEDED_ADAPTER_LIQUIDITY
             && d.usdc.balanceOf(address(d.seniorVault)) == SEEDED_SENIOR_LIQUIDITY
             && d.hedgeVault.availableCoverage(d.seedEpochId) == SEEDED_JUNIOR_LIQUIDITY;
@@ -191,7 +197,7 @@ contract DeployBaseSepolia is Script {
         string memory object = "baseSepolia";
         vm.serializeUint(object, "chainId", block.chainid);
         vm.serializeUint(object, "deploymentBlock", block.number);
-        vm.serializeAddress(object, "testnetUsdc", address(d.usdc));
+        vm.serializeAddress(object, "canonicalUsdc", address(d.usdc));
         vm.serializeAddress(object, "zoraV4Hook", BASE_SEPOLIA_ZORA_V4_HOOK);
         vm.serializeAddress(object, "mirrorFactory", d.mirrorFactory);
         vm.serializeUint(object, "seedEpochId", d.seedEpochId);

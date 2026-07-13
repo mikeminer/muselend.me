@@ -41,9 +41,9 @@ a mirror. This path is rejected when `mainnetEnabled == true`.
 No Zora Creator Coin V4 factory/validator or concrete V4 pool route is approved for Base
 Sepolia in this repository. `UniswapV4SwapAdapter` is implemented and tested against the
 official v2.1.1 action encoding, but remains undeployed and cannot trade until governance
-allowlists a fully verified `PoolKey`. Sepolia therefore uses the valueless
-`MuseLendTestUSDC` faucet asset and
-`MockSwapAdapter`. Mainnet swap execution remains disabled; no pool address or hook may be
+allowlists a fully verified `PoolKey`. Base Sepolia uses Circle's canonical testnet USDC at
+`0x036CbD53842c5426634e7929541eC2318f3dCF7e` with a funded `MockSwapAdapter`. Circle testnet
+USDC has no economic value. Mainnet swap execution remains disabled; no pool address or hook may be
 inferred from a blog, social post or unrelated deployment list.
 
 ## Pinned Base Mainnet fork fixture
