@@ -58,3 +58,9 @@ Base Sepolia addresses. Its read-only health and pool endpoints are operational;
 readiness remains fail-closed until persistence, Redis and WalletConnect are provisioned.
 Connecting `muselend.me`, external services and any mainnet/legal activation remain explicit
 owner gates. See `PLAN.md`, `docs/DEPLOYMENT.md`, and `docs/LAUNCH_GATES.md`.
+
+## License
+
+MuseLend's original source code is licensed under the GNU Affero General Public License,
+version 3 only (`AGPL-3.0-only`). See [`LICENSE`](LICENSE). Third-party dependencies and
+vendored libraries retain their own license terms.

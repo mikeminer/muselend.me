@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";

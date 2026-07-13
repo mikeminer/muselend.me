@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
 /// @notice Verifies that a token was deployed by the configured MuseLend mirror factory.
