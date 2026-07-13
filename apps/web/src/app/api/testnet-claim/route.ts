@@ -46,10 +46,28 @@ export async function POST(request: Request) {
     completeRequest(context, 200);
     return NextResponse.json(response, { headers: noStore(context.requestId) });
   } catch (error) {
-    const code = error instanceof Error ? error.message : "CLAIM_UNAVAILABLE";
+    const code = normalizeClaimErrorCode(error);
     const unavailable = code.startsWith("CLAIM_");
     return apiError(context.requestId, unavailable ? 503 : 422, code, claimErrorMessage(code));
   }
+}
+
+const claimErrorCodes = new Set([
+  "CLAIM_FACTORY_NOT_CONFIGURED",
+  "CLAIM_ATTESTER_NOT_CONFIGURED",
+  "CLAIM_ATTESTER_MISMATCH",
+  "SOURCE_TOKEN_NOT_FOUND",
+  "ZERO_SOURCE_BALANCE",
+  "NOT_A_CREATOR_COIN",
+  "NON_CANONICAL_CREATOR_COIN",
+  "INVALID_TOKEN_NAME",
+  "INVALID_TOKEN_SYMBOL",
+  "INVALID_TOKEN_DECIMALS",
+]);
+
+export function normalizeClaimErrorCode(error: unknown) {
+  const rawCode = error instanceof Error ? error.message : "CLAIM_UNAVAILABLE";
+  return claimErrorCodes.has(rawCode) ? rawCode : "CLAIM_UNAVAILABLE";
 }
 
 function noStore(requestId: string) {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GET, POST } from "./route";
+import { GET, normalizeClaimErrorCode, POST } from "./route";
 
 const wallet = "0x1111111111111111111111111111111111111111";
 const token = "0x2222222222222222222222222222222222222222";
@@ -35,5 +35,10 @@ describe("testnet claim API", () => {
     }));
     expect(response.status).toBe(503);
     expect((await response.json()).error.code).toBe("CLAIM_FACTORY_NOT_CONFIGURED");
+  });
+
+  it("does not expose raw provider errors as public error codes", () => {
+    expect(normalizeClaimErrorCode(new Error("RPC failed: internal provider detail"))).toBe("CLAIM_UNAVAILABLE");
+    expect(normalizeClaimErrorCode(new Error("ZERO_SOURCE_BALANCE"))).toBe("ZERO_SOURCE_BALANCE");
   });
 });

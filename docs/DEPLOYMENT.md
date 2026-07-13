@@ -94,6 +94,12 @@ after ten minutes. The factory enforces one claim per wallet/source-token pair a
 of 1,000,000 whole tokens. A mirror token is a faucet asset, not a bridge or a governance-enabled
 collateral market.
 
+`BASE_MAINNET_RPC_URL` should be a production provider endpoint. The public Base RPC is
+explicitly rate-limited, so testnet operation also configures
+`BASE_MAINNET_FALLBACK_RPC_URL`; the Viem fallback transport retries a failed read on the
+secondary endpoint. Unexpected provider errors are normalized to `CLAIM_UNAVAILABLE` and never
+returned verbatim to the browser.
+
 ## Base Sepolia deployment record
 
 On 2026-07-13, commit `ded4bdd` passed CI and was deployed to Base Sepolia from the dedicated

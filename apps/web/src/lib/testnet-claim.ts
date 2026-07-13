@@ -2,6 +2,7 @@ import { BaseCreatorTokenMirrorFactoryAbi } from "@muselend/abis";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   createPublicClient,
+  fallback,
   http,
   isAddress,
   parseAbi,
@@ -93,7 +94,12 @@ export async function createClaimAttestation(
   const { factory, privateKey } = claimConfiguration();
   const baseClient = createPublicClient({
     chain: base,
-    transport: http(process.env.BASE_MAINNET_RPC_URL ?? "https://mainnet.base.org"),
+    transport: fallback(
+      [...new Set([
+        process.env.BASE_MAINNET_RPC_URL ?? "https://mainnet.base.org",
+        process.env.BASE_MAINNET_FALLBACK_RPC_URL ?? "https://base-rpc.publicnode.com",
+      ])].map((url) => http(url, { retryCount: 1, retryDelay: 200 })),
+    ),
   });
   const sepoliaClient = createPublicClient({
     chain: baseSepolia,
