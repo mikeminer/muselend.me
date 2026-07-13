@@ -1,4 +1,5 @@
 import { BaseCreatorTokenMirrorFactoryAbi } from "@muselend/abis";
+import { getCoin, setApiKey } from "@zoralabs/coins-sdk";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   createPublicClient,
@@ -11,7 +12,6 @@ import {
 } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
-export const ZORA_FACTORY = "0x777777751622c0d3258f214F9DF38E35BF45baF3" as const;
 export const MAX_CLAIM_TOKENS = 1_000_000n;
 export const CLAIM_DOMAIN = {
   name: "MuseLend Base Creator Mirror",
@@ -35,11 +35,15 @@ const creatorCoinAbi = parseAbi([
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
-  "function coinType() view returns (uint8)",
   "function contractVersion() view returns (string)",
   "function getPoolKey() view returns (address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks)",
 ]);
-const zoraFactoryAbi = parseAbi(["function creatorCoinHook() view returns (address)"]);
+
+type IndexedCoin = {
+  address: string;
+  coinType: string;
+  platformBlocked: boolean;
+};
 
 export type ClaimVoucher = {
   wallet: Address;
@@ -77,6 +81,18 @@ export function claimAmount(balance: bigint, decimals: number) {
   return { amount: balance > maximum ? maximum : balance, capped: balance > maximum };
 }
 
+export function validateIndexedCreatorCoin(coin: IndexedCoin | undefined, sourceToken: Address) {
+  if (
+    !coin ||
+    coin.coinType !== "CREATOR" ||
+    coin.platformBlocked ||
+    !isAddress(coin.address) ||
+    coin.address.toLowerCase() !== sourceToken.toLowerCase()
+  ) {
+    throw new Error("NOT_A_CREATOR_COIN");
+  }
+}
+
 export function claimConfiguration() {
   const factory = process.env.NEXT_PUBLIC_CREATOR_MIRROR_FACTORY_ADDRESS;
   const privateKey = process.env.TESTNET_CLAIM_ATTESTER_PRIVATE_KEY;
@@ -112,24 +128,29 @@ export async function createClaimAttestation(
   const bytecode = await baseClient.getBytecode({ address: sourceToken, blockNumber: baseBlock });
   if (!bytecode || bytecode === "0x") throw new Error("SOURCE_TOKEN_NOT_FOUND");
 
-  const [name, symbol, decimals, balance, coinType, version, poolKey, canonicalHook] =
+  // Legacy Creator Coins (including v1.1.0) predate coinType(), so use Zora's
+  // canonical index for classification and keep metadata/balance/pool reads on-chain.
+  setApiKey(process.env.ZORA_API_KEY);
+  const [name, symbol, decimals, balance, version, poolKey, indexedCoinResult] =
     await Promise.all([
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "name", blockNumber: baseBlock }),
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "symbol", blockNumber: baseBlock }),
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "decimals", blockNumber: baseBlock }),
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "balanceOf", args: [wallet], blockNumber: baseBlock }),
-      baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "coinType", blockNumber: baseBlock }),
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "contractVersion", blockNumber: baseBlock }),
       baseClient.readContract({ address: sourceToken, abi: creatorCoinAbi, functionName: "getPoolKey", blockNumber: baseBlock }),
-      baseClient.readContract({ address: ZORA_FACTORY, abi: zoraFactoryAbi, functionName: "creatorCoinHook", blockNumber: baseBlock }),
+      getCoin({ address: sourceToken, chain: base.id }),
     ]);
 
   validateCreatorMetadata(name, symbol, decimals);
-  if (coinType !== 0 || !version || (poolKey[0] !== sourceToken && poolKey[1] !== sourceToken)) {
+  validateIndexedCreatorCoin(indexedCoinResult.data?.zora20Token, sourceToken);
+  const normalizedSourceToken = sourceToken.toLowerCase();
+  if (
+    !version ||
+    (poolKey[0].toLowerCase() !== normalizedSourceToken &&
+      poolKey[1].toLowerCase() !== normalizedSourceToken)
+  ) {
     throw new Error("NOT_A_CREATOR_COIN");
-  }
-  if (poolKey[4].toLowerCase() !== canonicalHook.toLowerCase()) {
-    throw new Error("NON_CANONICAL_CREATOR_COIN");
   }
   if (balance === 0n) throw new Error("ZERO_SOURCE_BALANCE");
 

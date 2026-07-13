@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { claimAmount, MAX_CLAIM_TOKENS, validateCreatorMetadata } from "./testnet-claim";
+import {
+  claimAmount,
+  MAX_CLAIM_TOKENS,
+  validateCreatorMetadata,
+  validateIndexedCreatorCoin,
+} from "./testnet-claim";
 
 describe("testnet creator-token claims", () => {
   it("preserves valid source metadata exactly", () => {
@@ -17,5 +22,45 @@ describe("testnet creator-token claims", () => {
     const maximum = MAX_CLAIM_TOKENS * 10n ** 18n;
     expect(claimAmount(maximum + 1n, 18)).toEqual({ amount: maximum, capped: true });
     expect(claimAmount(42n, 18)).toEqual({ amount: 42n, capped: false });
+  });
+
+  it("accepts indexed legacy Creator Coins without the latest coinType interface", () => {
+    expect(() =>
+      validateIndexedCreatorCoin(
+        {
+          address: "0x41859a1048fb4f8d668861b1249504bf52e6d3bd",
+          coinType: "CREATOR",
+          platformBlocked: false,
+        },
+        "0x41859a1048fb4f8d668861b1249504bf52e6d3bd",
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects non-creator, blocked, and mismatched indexed coins", () => {
+    const source = "0x41859a1048fb4f8d668861b1249504bf52e6d3bd";
+    expect(() => validateIndexedCreatorCoin(undefined, source)).toThrow("NOT_A_CREATOR_COIN");
+    expect(() =>
+      validateIndexedCreatorCoin(
+        { address: source, coinType: "CONTENT", platformBlocked: false },
+        source,
+      ),
+    ).toThrow("NOT_A_CREATOR_COIN");
+    expect(() =>
+      validateIndexedCreatorCoin(
+        { address: source, coinType: "CREATOR", platformBlocked: true },
+        source,
+      ),
+    ).toThrow("NOT_A_CREATOR_COIN");
+    expect(() =>
+      validateIndexedCreatorCoin(
+        {
+          address: "0xf774d7Fb286265B4359773c557E9E5DD4910474d",
+          coinType: "CREATOR",
+          platformBlocked: false,
+        },
+        source,
+      ),
+    ).toThrow("NOT_A_CREATOR_COIN");
   });
 });

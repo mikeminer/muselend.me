@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const body = await parseBody(request, testnetClaimRequest, context.requestId);
   if (body instanceof NextResponse) return body;
   try {
-    const result = await withTimeout(createClaimAttestation(body.wallet as Address, body.sourceToken as Address), 12_000);
+    const result = await withTimeout(createClaimAttestation(body.wallet as Address, body.sourceToken as Address), 20_000);
     const response = {
       wallet: body.wallet,
       sourceToken: body.sourceToken,
