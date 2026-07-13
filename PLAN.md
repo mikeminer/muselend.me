@@ -22,46 +22,48 @@ explicit owner gates.
 
 - [x] Install and pin Foundry 1.7.1 and Solidity 0.8.35.
 - [x] Implement rate model, risk manager, senior vault, hedge epoch vault, receipt,
-  position manager, typed adapters, validator, treasury, mocks, and withdrawal queue.
+      position manager, typed adapters, validator, treasury, mocks, and withdrawal queue.
 - [x] Add unit, fuzz, invariant, differential, local-chain E2E, and static-analysis suites.
-- [ ] Add canonical infrastructure fork tests when a pinned archival RPC is available.
+- [x] Add a read-only Base Mainnet fork test pinned to an official-factory Creator Coin,
+      canonical USDC, implementation and hook; run it when `BASE_MAINNET_RPC_URL` is available.
 - [x] Export deterministic ABIs and deployment configuration.
 
 ## Phase 3 — product
 
 - [x] Build the Next.js App Router web application and bilingual content system.
 - [x] Implement public, borrower, lender, underwriter, markets, position, docs, risk,
-  legal, and status surfaces.
+      legal, and status surfaces.
 - [x] Connect the admin console to deployed role checks and pre-write simulations; it remains
-  fail-closed until verified deployment addresses are supplied.
+      fail-closed until verified deployment addresses are supplied.
 - [x] Add wallet connectivity, transaction lifecycle, direct-chain fallback, APIs,
-  reorg-aware finalized-block indexing, rate limiting, and security headers.
+      reorg-aware finalized-block indexing, rate limiting, and security headers.
 - [x] Wire typed Base Sepolia test-adapter quotes to simulated full and capped position
-  settlement, including explicit slippage and borrower-controlled top-up limits.
+      settlement, including explicit slippage and borrower-controlled top-up limits.
 - [x] Wire the borrower UI through canonical-token validation, protected sell quote, token
-  approval, on-chain risk accounting, fresh simulation and atomic position opening.
+      approval, on-chain risk accounting, fresh simulation and atomic position opening.
 - [x] Require pre-wallet simulation for senior and junior writes; expose permissionless FIFO
-  withdrawal claims and settled-epoch closure without adding any unbounded on-chain loop.
+      withdrawal claims and settled-epoch closure without adding any unbounded on-chain loop.
 - [x] Expose verified roles, risk config and adapter status in admin; simulate typed governance
-  targets as the timelock before proposer-only scheduling with the enforced minimum delay.
+      targets as the timelock before proposer-only scheduling with the enforced minimum delay.
 - [x] Complete the non-authoritative persistence schema and migrations; cache sanitized token
-  metadata and quote outcomes without making chain responses depend on database availability.
+      metadata and quote outcomes without making chain responses depend on database availability.
 - [x] Implement atomic distributed rate limiting with a lazy Upstash client and production
-  fail-closed behavior.
+      fail-closed behavior.
 - [ ] Connect production persistence and observability after the owner provisions the
-  required Vercel/Neon/Upstash resources.
+      required Vercel/Neon/Upstash resources.
 - [x] Add unit, accessibility, browser, and local-chain E2E coverage.
 
 ## Phase 4 — delivery
 
-- [x] Pass clean install, lint, typecheck, builds, 37 Foundry tests, invariants,
-  Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
+- [x] Pass clean install, lint, typecheck, builds, 38 Foundry tests plus the optional live fork
+      integration, invariants,
+      Slither with no high/medium findings, Axe browser checks, and Anvil lifecycle E2E in CI.
 - [ ] Deploy and verify contracts on Base Sepolia only after a funded testnet signer is
-  available and the owner approves signing transactions.
+      available and the owner approves signing transactions.
 - [x] Simulate the complete guarded deployment against the public Base Sepolia RPC without
-  broadcasting; verify canonical USDC, governance handoff and post-deployment invariants.
+      broadcasting; verify canonical USDC, governance handoff and post-deployment invariants.
 - [ ] Configure Vercel testnet mode, preview, production, and then connect the already
-  owned domain after verifying the intended Vercel scope and DNS authority.
+      owned domain after verifying the intended Vercel scope and DNS authority.
 - [ ] Keep `MAINNET_ENABLED=false` until every documented launch gate is independently met.
 
 ## Explicit stop gates

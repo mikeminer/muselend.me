@@ -5,6 +5,7 @@
   "scripts": {
     "build": "forge build",
     "lint": "forge fmt --check",
+    "test:fork": "forge test --match-contract BaseMainnetForkTest -vvv",
     "typecheck": "forge build",
     "test": "forge test"
   }
