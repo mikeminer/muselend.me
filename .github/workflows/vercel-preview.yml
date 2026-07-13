@@ -35,7 +35,7 @@ jobs:
         if: env.VERCEL_TOKEN != ''
         id: deploy
         run: echo "url=$(pnpm dlx vercel@54.6.1 deploy --prebuilt --token="$VERCEL_TOKEN")" >> "$GITHUB_OUTPUT"
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         if: env.VERCEL_TOKEN != ''
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
