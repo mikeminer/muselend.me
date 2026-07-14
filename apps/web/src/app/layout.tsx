@@ -22,6 +22,10 @@ export const metadata: Metadata = {
     "Unlock USDC from your creator token with capped synthetic exposure on Base.",
   applicationName: "MuseLend",
   manifest: "/site.webmanifest",
+  other: {
+    "talentapp:project_verification":
+      "333ab30eb32a69ad7892cd850571bbb0d1d2bf08914b9c534586f5fe7b5a0ac2acde59a61e03ce17b98aa4f549f014056bb9b8e279a8bd14a5236bdbf3484a07",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
